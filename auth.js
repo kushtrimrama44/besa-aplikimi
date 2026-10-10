@@ -65,10 +65,76 @@ async function loadHR(){
  }
 }
 document.querySelector('#refreshHR').addEventListener('click',loadHR);
-function printApplication(record){const d=record.data||{};const win=window.open('','_blank');if(!win){alert('Lejo pop-up per printim.');return;}
- const style=`<style>@page{size:A4;margin:15mm}body{font:11pt Arial;color:#172b42}header{border-bottom:3px solid #173b63;padding-bottom:12px}h1{font-size:19pt}table{width:100%;border-collapse:collapse}td{border:1px solid #d9e0e8;padding:7px;vertical-align:top}td:first-child{background:#edf2f7;width:38%;font-weight:bold}footer{margin-top:25px;font-size:9pt;color:#667}</style>`;
+function printApplication(record){
+ const d=record.data||{};
+ const win=window.open('','_blank');
+ if(!win){alert('Lejo pop-up per shfaqjen e aplikimit A4.');return;}
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const excluded=new Set(fileFields.concat(['pajtimi']));const rows=Object.entries(d).filter(([k])=>!excluded.has(k)).map(([k,v])=>`<tr><td>${esc(k.replaceAll('_',' '))}</td><td>${esc(Array.isArray(v)?v.join(', '):v)}</td></tr>`).join('');
- win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Aplikimi A4</title>${style}</head><body><header><img src="besa-logo.png" alt="Besa Security" style="width:70px;height:70px;object-fit:contain;float:left;margin-right:18px"><b>BESA SECURITY</b><h1>Formulari i aplikimit per pune</h1><p>Nr. aplikimit: ${esc(record.id)}</p></header><table>${rows}</table><footer>Data e regjistrimit: ${esc(new Date(record.created_at).toLocaleString('sq-AL'))} · Dokumentet shikohen vecmas ne HR Dashboard.</footer></body></html>`);win.document.close();win.focus();setTimeout(()=>win.print(),350);
+ const groups=[
+  ['01','Pozita dhe te dhenat personale',[
+   ['pozita','Pozita e aplikuar'],['emri','Emri'],['emri_babait','Emri i babait'],['mbiemri','Mbiemri'],
+   ['numri_leternjoftimit','Nr. i leternjoftimit'],['data_lindjes','Data e lindjes'],['vendi_lindjes','Vendi i lindjes'],
+   ['vendbanimi','Vendbanimi'],['adresa','Adresa'],['telefoni','Telefoni'],['perkatesia_etnike','Perkatesia etnike'],
+   ['perkatesia_tjeter','Perkatesia - tjeter'],['gjinia','Gjinia'],['pesha','Pesha (kg)'],['gjatesia','Gjatesia (cm)']]],
+  ['02','Arsimi dhe kualifikimet',[
+   ['pergatitja_shkollore','Pergatitja shkollore'],['drejtimi','Drejtimi'],['trajnime','Trajnime sigurimi'],
+   ['pershkrim_trajnimeve','Pershkrimi i trajnimeve'],['patente','Patente shoferi'],['kategorite','Kategorite e patentes'],
+   ['denuar','I denuar me heret'],['statusi_ligjor','Statusi ligjor'],['arsyeja_statusit','Arsyeja / sqarimi']]],
+  ['03','Banka dhe kontakti familjar',[
+   ['xhirollogaria','Numri i xhirollogarise'],['kontakti_familjar','Kontakti familjar'],
+   ['telefoni_familjar','Telefoni familjar'],['lidhja_familjare','Lidhja familjare']]]
+ ];
+ const handled=new Set(['pajtimi','data_aplikimit','leternjoftimi_file','kartela_bankare_file','certifikata_trajnimi_file','certifikata_shkollore_file']);
+ for(const [, , fields] of groups)for(const [key] of fields)handled.add(key);
+ const val=v=>Array.isArray(v)?v.join(', '):String(v??'');
+ const cell=(key,label)=>`<div class="field"><span class="field-label">${esc(label)}</span><span class="field-value">${esc(val(d[key])||'—')}</span></div>`;
+ let sections=groups.map(([number,title,fields])=>{
+  const visible=fields.filter(([k])=>d[k]!==undefined&&d[k]!==null&&val(d[k]).trim()!=='');
+  return `<section class="section"><h2><span>${number}</span> ${esc(title)}</h2><div class="fields">${visible.map(([k,label])=>cell(k,label)).join('')}</div></section>`;
+ }).join('');
+ const extra=Object.entries(d).filter(([k,v])=>!handled.has(k)&&v!==null&&v!==undefined&&val(v).trim()!=='');
+ if(extra.length)sections+=`<section class="section"><h2><span>04</span> Te dhena shtese</h2><div class="fields">${extra.map(([k])=>cell(k,k.replaceAll('_',' '))).join('')}</div></section>`;
+ const docs=[['leternjoftimi_file','Leternjoftimi'],['kartela_bankare_file','Dokumenti bankar'],['certifikata_trajnimi_file','Certifikate trajnimi'],['certifikata_shkollore_file','Certifikate shkollore']];
+ sections+=`<section class="section"><h2><span>05</span> Dokumentet e bashkengjitura</h2><div class="docs">${docs.map(([key,label])=>`<div>${esc(label)}: <strong>${d[key]?'Bashkengjitur':'Nuk eshte bashkengjitur'}</strong></div>`).join('')}</div></section>`;
+ const date=new Date(record.created_at).toLocaleString('sq-AL');
+ const css=`
+ @page{size:A4 portrait;margin:10mm 11mm}
+ *{box-sizing:border-box}
+ html{background:#e8edf2}body{margin:0;font:10px Arial,Helvetica,sans-serif;color:#172a40}
+ .toolbar{position:sticky;top:0;z-index:5;background:#152f4c;color:white;padding:12px 18px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px}
+ .toolbar button{border:0;border-radius:6px;padding:9px 16px;background:#fff;color:#12304c;font-weight:bold;cursor:pointer}
+ .toolbar .primary{background:#e33339;color:#fff}
+ .sheet{background:#fff;width:210mm;min-height:297mm;margin:20px auto;padding:10mm 11mm;box-shadow:0 8px 35px #152f4c33}
+ .heading{display:flex;gap:12px;align-items:center;border-bottom:2px solid #bf202c;padding-bottom:9px;margin-bottom:8px}
+ .logo{width:64px;height:52px;object-fit:contain}
+ .heading h1{font-size:17px;line-height:1.2;margin:2px 0 3px;color:#132c49}
+ .heading .company{font-weight:800;letter-spacing:1px;font-size:11px}
+ .heading .subtitle{font-size:9px;color:#637286}
+ .meta{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;background:#f3f6f9;padding:7px 9px;border-radius:3px;font-size:9px;margin-bottom:9px}
+ .meta strong{overflow-wrap:anywhere}
+ .section{margin:0 0 8px;break-inside:auto}
+ .section h2{font-size:10.5px;color:#153553;margin:0 0 4px;padding:5px 7px;background:#eaf0f5;border-left:3px solid #c92935;break-after:avoid;page-break-after:avoid}
+ .section h2 span{color:#b52733;margin-right:5px}
+ .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 8px}
+ .field{display:grid;grid-template-columns:43% 57%;border-bottom:1px solid #dce4ec;padding:4px 3px;min-height:23px;break-inside:avoid;page-break-inside:avoid}
+ .field-label{color:#5c6d7d;font-size:9px;padding-right:4px}
+ .field-value{font-size:9.5px;font-weight:600;overflow-wrap:anywhere;white-space:pre-wrap}
+ .docs{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;padding:5px 3px;font-size:9px}
+ .docs>div{break-inside:avoid}
+ .foot{border-top:1px solid #d7e0e9;padding-top:6px;margin-top:10px;display:flex;justify-content:space-between;gap:8px;font-size:8px;color:#617285;break-inside:avoid}
+ @media print{
+  html,body{background:#fff;margin:0;padding:0}
+  .toolbar{display:none!important}
+  .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
+  .section{margin-bottom:6px}
+  .field{padding:3px 3px;min-height:20px}
+  .heading{padding-bottom:6px;margin-bottom:6px}
+  .meta{margin-bottom:6px}
+  .foot{margin-top:7px}
+ }
+ `;
+ const html=`<!doctype html><html lang="sq"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aplikimi ${esc(record.id)} - A4</title><style>${css}</style></head><body><div class="toolbar"><span>Shikimi i aplikimit - A4</span><button class="primary" onclick="window.print()">Printo / Ruaj PDF</button><button onclick="window.close()">Mbyll</button></div><main class="sheet"><header class="heading"><img class="logo" src="${esc(new URL('besa-logo.png',location.href).href)}" alt="Besa Security"><div><div class="company">BESA SECURITY</div><h1>FORMULARI I APLIKIMIT PER PUNE</h1><div class="subtitle">Dokument per shqyrtim nga Departamenti i Burimeve Njerezore</div></div></header><div class="meta"><div>Nr. aplikimit: <strong>${esc(record.id)}</strong></div><div>Data: <strong>${esc(date)}</strong></div><div>Statusi: <strong>${esc(record.status)}</strong></div></div>${sections}<footer class="foot"><span>BESA SECURITY · Your safety, our promise.</span><span>Dokumentet hapen vecmas ne HR Dashboard.</span></footer></main></body></html>`;
+ win.document.open();win.document.write(html);win.document.close();
 }
+
 refresh();
