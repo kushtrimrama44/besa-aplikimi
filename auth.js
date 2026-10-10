@@ -20,7 +20,10 @@ document.querySelector('#loginForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!supa){msg('Se pari ploteso config.js');return;}
  const username=document.querySelector('#username').value.trim().toLowerCase();
  const password=document.querySelector('#password').value;
- const {error}=await supa.auth.signInWithPassword({email:username,password});
+ const allowed=['aplikant1','aplikant2','aplikant3','admin'];
+ if(!allowed.includes(username)){msg('Username i pavlefshem.');return;}
+ const email=`${username}@besa.login`;
+ const {error}=await supa.auth.signInWithPassword({email,password});
  if(error){msg('Kyçja deshtoi. Kontrollo kredencialet.');return;}await refresh();
 });
 document.querySelectorAll('.logout').forEach(b=>b.addEventListener('click',async()=>{await supa.auth.signOut();currentRole=null;await refresh()}));
@@ -34,7 +37,10 @@ async function submitApplication(form){
  const applicationId=crypto.randomUUID();const uploaded=[];
  try{
   for(const name of fileFields){const file=fd.get(name);if(!file||!file.size)continue;
-   const extension=file.name.split('.').pop().toLowerCase();const path=`${applicationId}/${name}.${extension}`;
+   const extension=file.name.split('.').pop().toLowerCase();
+   const allowedTypes={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png'};
+   if(!allowedTypes[extension]||file.type!==allowedTypes[extension]||file.size>5242880)throw new Error('Dokumenti duhet te jete PDF/JPG/PNG deri ne 5 MB: '+name);
+   const path=`${applicationId}/${name}.${extension}`;
    const {error}=await supa.storage.from('application-documents').upload(path,file,{contentType:file.type,upsert:false});
    if(error)throw new Error('Ngarkimi i dokumentit deshtoi: '+name);uploaded.push(path);payload[name]=path;
   }
