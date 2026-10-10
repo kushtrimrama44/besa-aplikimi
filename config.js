@@ -1,3 +1,6 @@
-// Ploteso keto dy vlera nga Supabase > Project Settings > API.
-// Perdor vetem anon/publishable key. KURRE mos vendos service_role/secret key ketu.
-window.BESA_CONFIG = { url: '', anonKey: '' };
+// BESA SECURITY - Supabase Configuration
+
+window.BESA_CONFIG = {
+  url: 'https://thznfpgfiekzmevnxzwb.supabase.co',
+  anonKey: 'sb_publishable_jI2snQNfHn_pp3rqzzGBmw_BjPwdApU'
+};
