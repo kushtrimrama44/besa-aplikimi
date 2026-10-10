@@ -1,5 +1,5 @@
-// BESA SECURITY - Supabase public frontend configuration.
-// Project URL pa /rest/v1/. Mos vendos asnje secret/service_role key ketu.
+// BESA SECURITY - Supabase Configuration
+
 window.BESA_CONFIG = {
   url: 'https://thznfpgfiekzmevnxzwb.supabase.co',
   anonKey: 'sb_publishable_jI2snQNfHn_pp3rqzzGBmw_BjPwdApU'
