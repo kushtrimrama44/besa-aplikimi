@@ -1,21 +1,31 @@
 
 'use strict';
 
-// =============================================
+// ============================================
 // BESA SECURITY - APLIKIM PER PUNE
-// VERSIONI 1.1
-// =============================================
+// Versioni 1.1
+// Numri rendor automatik i aplikimit
+// ============================================
 
 const cfg = window.BESA_CONFIG;
-const ready = !!(cfg?.url && cfg?.anonKey);
+
+const ready = !!(
+  cfg?.url &&
+  cfg?.anonKey &&
+  window.supabase
+);
 
 const supa = ready
-  ? window.supabase.createClient(cfg.url, cfg.anonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true
+  ? window.supabase.createClient(
+      cfg.url,
+      cfg.anonKey,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true
+        }
       }
-    })
+    )
   : null;
 
 const gate = document.querySelector('#loginGate');
@@ -25,13 +35,27 @@ const status = document.querySelector('#authStatus');
 
 let currentRole = null;
 
-function msg(text) {
-  status.textContent = text;
+function msg(value) {
+  if (status) status.textContent = value;
 }
 
-// =============================================
+// ============================================
+// NUMRI RENDOR
+// ============================================
+
+function formatApplicationNumber(number) {
+  if (number === null ||
+      number === undefined ||
+      number === '') {
+    return 'Pa numer';
+  }
+
+  return String(number).padStart(4, '0');
+}
+
+// ============================================
 // AUTENTIKIMI
-// =============================================
+// ============================================
 
 async function refresh() {
   gate.hidden = false;
@@ -58,7 +82,10 @@ async function refresh() {
     .eq('user_id', user.id)
     .single();
 
-  if (error || !['aplikant', 'hr'].includes(data?.role)) {
+  if (
+    error ||
+    !['aplikant', 'hr'].includes(data?.role)
+  ) {
     await supa.auth.signOut();
     msg('Llogaria nuk ka rol te autorizuar.');
     return;
@@ -79,9 +106,9 @@ async function refresh() {
   }
 }
 
-// =============================================
+// ============================================
 // LOGIN
-// =============================================
+// ============================================
 
 document.querySelector('#loginForm')
   .addEventListener('submit', async event => {
@@ -92,10 +119,12 @@ document.querySelector('#loginForm')
       return;
     }
 
-    const username = document.querySelector('#username')
-      .value.trim().toLowerCase();
+    const username =
+      document.querySelector('#username')
+        .value.trim().toLowerCase();
 
-    const password = document.querySelector('#password').value;
+    const password =
+      document.querySelector('#password').value;
 
     const allowed = [
       'aplikant1',
@@ -109,10 +138,11 @@ document.querySelector('#loginForm')
       return;
     }
 
-    const { error } = await supa.auth.signInWithPassword({
-      email: `${username}@besa.login`,
-      password
-    });
+    const { error } =
+      await supa.auth.signInWithPassword({
+        email: `${username}@besa.login`,
+        password
+      });
 
     if (error) {
       msg('Kyçja deshtoi. Kontrollo kredencialet.');
@@ -122,17 +152,18 @@ document.querySelector('#loginForm')
     await refresh();
   });
 
-document.querySelectorAll('.logout').forEach(button => {
-  button.addEventListener('click', async () => {
-    if (supa) await supa.auth.signOut();
-    currentRole = null;
-    await refresh();
+document.querySelectorAll('.logout')
+  .forEach(button => {
+    button.addEventListener('click', async () => {
+      if (supa) await supa.auth.signOut();
+      currentRole = null;
+      await refresh();
+    });
   });
-});
 
-// =============================================
+// ============================================
 // DOKUMENTET
-// =============================================
+// ============================================
 
 const fileFields = [
   'leternjoftimi_para_file',
@@ -173,9 +204,9 @@ const allDocumentFields = [
   'leternjoftimi_file'
 ];
 
-// =============================================
+// ============================================
 // DERGIMI I APLIKIMIT
-// =============================================
+// ============================================
 
 async function submitApplication(form) {
   if (!supa || currentRole !== 'aplikant') {
@@ -229,12 +260,14 @@ async function submitApplication(form) {
         file.size > 5242880
       ) {
         throw new Error(
-          'Dokumenti duhet te jete PDF/JPG/PNG deri ne 5 MB: ' +
+          'Dokumenti duhet te jete PDF/JPG/PNG ' +
+          'deri ne 5 MB: ' +
           documentLabels[name]
         );
       }
 
-      const path = `${applicationId}/${name}.${extension}`;
+      const path =
+        `${applicationId}/${name}.${extension}`;
 
       const { error } = await supa.storage
         .from('application-documents')
@@ -247,8 +280,7 @@ async function submitApplication(form) {
         throw new Error(
           'Ngarkimi deshtoi per ' +
           documentLabels[name] +
-          ': ' +
-          error.message
+          ': ' + error.message
         );
       }
 
@@ -256,6 +288,8 @@ async function submitApplication(form) {
       payload[name] = path;
     }
 
+    // application_number NUK dergohet nga browseri.
+    // Supabase e gjeneron automatikisht.
     const { error } = await supa
       .from('applications')
       .insert({
@@ -288,9 +322,9 @@ async function submitApplication(form) {
 
 window.besaSubmit = submitApplication;
 
-// =============================================
+// ============================================
 // EMERTIMET E FUSHAVE
-// =============================================
+// ============================================
 
 const fieldLabels = {
   pozita: 'Pozita e aplikuar',
@@ -339,25 +373,27 @@ function formatFieldLabel(key) {
       );
 }
 
-// =============================================
+// ============================================
 // HR DASHBOARD
-// =============================================
+// ============================================
 
 async function loadHR() {
   const root = document.querySelector('#hrList');
-
   root.textContent = 'Duke ngarkuar...';
 
   const { data, error } = await supa
     .from('applications')
-    .select('id,created_at,data,status')
+    .select(
+      'id,application_number,created_at,data,status'
+    )
     .order('created_at', {
       ascending: false
     })
     .limit(200);
 
   if (error) {
-    root.textContent = 'Gabim: ' + error.message;
+    root.textContent =
+      'Gabim: ' + error.message;
     return;
   }
 
@@ -373,6 +409,19 @@ async function loadHR() {
 
     const card = document.createElement('article');
     card.className = 'hr-card';
+
+    // Numri rendor ne Dashboard HR
+    const number = document.createElement('p');
+    number.style.fontWeight = 'bold';
+    number.style.color = '#173b63';
+
+    number.textContent =
+      'Nr. aplikimit: ' +
+      formatApplicationNumber(
+        record.application_number
+      );
+
+    card.append(number);
 
     const heading = document.createElement('h3');
 
@@ -399,7 +448,8 @@ async function loadHR() {
     show.type = 'button';
     show.textContent = 'Shiko / Printo A4';
 
-    show.onclick = () => printApplication(record);
+    show.onclick = () =>
+      printApplication(record);
 
     card.append(show);
 
@@ -412,7 +462,9 @@ async function loadHR() {
       'Pranuar',
       'Refuzuar'
     ]) {
-      const option = document.createElement('option');
+      const option =
+        document.createElement('option');
+
       option.value = value;
       option.textContent = value;
       select.append(option);
@@ -421,7 +473,8 @@ async function loadHR() {
     select.value = record.status || 'I ri';
 
     select.onchange = async () => {
-      const previous = record.status || 'I ri';
+      const previous =
+        record.status || 'I ri';
 
       const { error } = await supa
         .from('applications')
@@ -440,12 +493,12 @@ async function loadHR() {
 
     card.append(select);
 
-    // Hapja e dokumenteve ne HR
-
     for (const field of allDocumentFields) {
       if (!d[field]) continue;
 
-      const button = document.createElement('button');
+      const button =
+        document.createElement('button');
+
       button.type = 'button';
 
       button.textContent =
@@ -478,12 +531,13 @@ async function loadHR() {
 document.querySelector('#refreshHR')
   .addEventListener('click', loadHR);
 
-// =============================================
-// PRINTIMI A4 - ISO VERSION 1.1
-// =============================================
+// ============================================
+// PRINTIMI A4
+// ============================================
 
 function printApplication(record) {
   const d = record.data || {};
+
   const win = window.open('', '_blank');
 
   if (!win) {
@@ -593,7 +647,9 @@ function printApplication(record) {
 
     sections += `
       <section class="section">
-        <h2>${group.number} · ${esc(group.title)}</h2>
+        <h2>
+          ${group.number} · ${esc(group.title)}
+        </h2>
         <div class="fields">
           ${visible.map(fieldHTML).join('')}
         </div>
@@ -623,7 +679,9 @@ function printApplication(record) {
     <div>
       ${esc(documentLabels[key])}:
       <strong>
-        ${d[key] ? 'Bashkengjitur' : 'Nuk eshte bashkengjitur'}
+        ${d[key]
+          ? 'Bashkengjitur'
+          : 'Nuk eshte bashkengjitur'}
       </strong>
     </div>
   `).join('');
@@ -635,17 +693,23 @@ function printApplication(record) {
     </section>
   `;
 
-  const date = new Date(record.created_at)
-    .toLocaleString('sq-AL');
+  const date =
+    new Date(record.created_at)
+      .toLocaleString('sq-AL');
 
   const logo = new URL(
     'besa-logo.png',
     window.location.href
   ).href;
 
-  // =============================================
-  // CSS PER RAPORTIN A4
-  // =============================================
+  const applicationNumber =
+    formatApplicationNumber(
+      record.application_number
+    );
+
+  // ============================================
+  // CSS I RAPORTIT
+  // ============================================
 
   const css = `
     @page {
@@ -721,7 +785,6 @@ function printApplication(record) {
       font-weight: bold;
       line-height: 1.5;
       white-space: nowrap;
-      color: #172a40;
     }
 
     .iso-version {
@@ -735,6 +798,13 @@ function printApplication(record) {
       background: #f2f5f8;
       font-size: 9px;
       overflow-wrap: anywhere;
+    }
+
+    .application-number {
+      font-size: 13px;
+      font-weight: bold;
+      color: #173b63;
+      margin-bottom: 5px;
     }
 
     .section {
@@ -813,16 +883,19 @@ function printApplication(record) {
     }
   `;
 
-  // =============================================
+  // ============================================
   // HTML I RAPORTIT
-  // =============================================
+  // ============================================
 
   win.document.write(`
     <!doctype html>
     <html lang="sq">
     <head>
       <meta charset="utf-8">
-      <title>Aplikimi A4 - Besa Security</title>
+      <title>
+        Aplikimi ${esc(applicationNumber)}
+        - Besa Security
+      </title>
       <style>${css}</style>
     </head>
 
@@ -873,9 +946,10 @@ function printApplication(record) {
         </header>
 
         <div class="meta">
-          <div>
+
+          <div class="application-number">
             Nr. aplikimit:
-            <strong>${esc(record.id)}</strong>
+            ${esc(applicationNumber)}
           </div>
 
           <div>
@@ -889,6 +963,7 @@ function printApplication(record) {
               ${esc(record.status || 'I ri')}
             </strong>
           </div>
+
         </div>
 
         ${sections}
@@ -910,8 +985,8 @@ function printApplication(record) {
   win.document.close();
 }
 
-// =============================================
+// ============================================
 // START
-// =============================================
+// ============================================
 
 refresh();
