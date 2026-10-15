@@ -1,14 +1,11 @@
+
 'use strict';
 
 const cfg = window.BESA_CONFIG;
 const ready = !!(cfg?.url && cfg?.anonKey);
-
 const supa = ready
   ? window.supabase.createClient(cfg.url, cfg.anonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true
-      }
+      auth: { persistSession: true, autoRefreshToken: true }
     })
   : null;
 
@@ -27,15 +24,14 @@ async function refresh() {
   gate.hidden = false;
   appView.hidden = true;
   hrView.hidden = true;
+  currentRole = null;
 
   if (!supa) {
     msg('Konfiguro Supabase ne config.js.');
     return;
   }
 
-  const { data: { user }, error: userError } =
-    await supa.auth.getUser();
-
+  const { data: { user }, error: userError } = await supa.auth.getUser();
   if (userError || !user) {
     msg('');
     return;
@@ -58,7 +54,6 @@ async function refresh() {
 
   if (currentRole === 'aplikant') {
     appView.hidden = false;
-
     const form = document.querySelector('#application');
     form.reset();
     form.dispatchEvent(new Event('change'));
@@ -68,73 +63,76 @@ async function refresh() {
   }
 }
 
-// =============================================
-// LOGIN ME USERNAME
-// =============================================
+// LOGIN
 
-document.querySelector('#loginForm')
-  .addEventListener('submit', async event => {
-    event.preventDefault();
+document.querySelector('#loginForm').addEventListener('submit', async event => {
+  event.preventDefault();
 
-    if (!supa) {
-      msg('Se pari ploteso config.js.');
-      return;
-    }
+  if (!supa) {
+    msg('Se pari ploteso config.js.');
+    return;
+  }
 
-    const username = document.querySelector('#username')
-      .value.trim().toLowerCase();
+  const username = document.querySelector('#username')
+    .value.trim().toLowerCase();
+  const password = document.querySelector('#password').value;
 
-    const password = document.querySelector('#password').value;
+  const allowed = ['aplikant1', 'aplikant2', 'aplikant3', 'admin'];
 
-    const allowed = [
-      'aplikant1',
-      'aplikant2',
-      'aplikant3',
-      'admin'
-    ];
+  if (!allowed.includes(username)) {
+    msg('Username i pavlefshem.');
+    return;
+  }
 
-    if (!allowed.includes(username)) {
-      msg('Username i pavlefshem.');
-      return;
-    }
-
-    const email = `${username}@besa.login`;
-
-    const { error } = await supa.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      msg('Kyçja deshtoi. Kontrollo kredencialet.');
-      return;
-    }
-
-    await refresh();
+  const { error } = await supa.auth.signInWithPassword({
+    email: `${username}@besa.login`,
+    password
   });
+
+  if (error) {
+    msg('Kyçja deshtoi. Kontrollo kredencialet.');
+    return;
+  }
+
+  await refresh();
+});
 
 document.querySelectorAll('.logout').forEach(button => {
   button.addEventListener('click', async () => {
-    await supa.auth.signOut();
+    if (supa) await supa.auth.signOut();
     currentRole = null;
     await refresh();
   });
 });
 
-// =============================================
 // DOKUMENTET
-// =============================================
 
 const fileFields = [
-  'leternjoftimi_file',
+  'leternjoftimi_para_file',
+  'leternjoftimi_prapa_file',
   'kartela_bankare_file',
   'certifikata_trajnimi_file',
   'certifikata_shkollore_file'
 ];
 
-// =============================================
+const requiredFiles = [
+  'leternjoftimi_para_file',
+  'leternjoftimi_prapa_file',
+  'kartela_bankare_file'
+];
+
+const documentLabels = {
+  leternjoftimi_para_file: 'Leternjoftimi - Pjesa e perparme',
+  leternjoftimi_prapa_file: 'Leternjoftimi - Pjesa e pasme',
+  leternjoftimi_file: 'Leternjoftimi (aplikim i vjeter)',
+  kartela_bankare_file: 'Dokumenti bankar',
+  certifikata_trajnimi_file: 'Certifikata e trajnimeve',
+  certifikata_shkollore_file: 'Certifikata shkollore'
+};
+
+const allDocumentFields = [...fileFields, 'leternjoftimi_file'];
+
 // DERGIMI I APLIKIMIT
-// =============================================
 
 async function submitApplication(form) {
   if (!supa || currentRole !== 'aplikant') {
@@ -154,113 +152,127 @@ async function submitApplication(form) {
   payload.data_aplikimit = new Date().toISOString();
 
   const applicationId = crypto.randomUUID();
+  const uploaded = [];
 
-  for (const name of fileFields) {
-    const file = fd.get(name);
+  try {
+    for (const name of fileFields) {
+      const file = fd.get(name);
 
-    if (!file || !file.size) continue;
+      if (!file || !file.size) {
+        if (requiredFiles.includes(name)) {
+          throw new Error('Dokumenti i detyrueshem mungon: ' + documentLabels[name]);
+        }
+        continue;
+      }
 
-    const extension = file.name.split('.').pop().toLowerCase();
+      const extension = file.name.split('.').pop().toLowerCase();
 
-    const allowedTypes = {
-      pdf: 'application/pdf',
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png'
-    };
+      const allowedTypes = {
+        pdf: 'application/pdf',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png'
+      };
 
-    if (
-      !allowedTypes[extension] ||
-      file.type !== allowedTypes[extension] ||
-      file.size > 5242880
-    ) {
-      throw new Error(
-        'Dokumenti duhet te jete PDF/JPG/PNG deri ne 5 MB: ' + name
-      );
+      if (
+        !allowedTypes[extension] ||
+        file.type !== allowedTypes[extension] ||
+        file.size > 5242880
+      ) {
+        throw new Error(
+          'Dokumenti duhet te jete PDF/JPG/PNG deri ne 5 MB: ' +
+          documentLabels[name]
+        );
+      }
+
+      const path = `${applicationId}/${name}.${extension}`;
+
+      const { error } = await supa.storage
+        .from('application-documents')
+        .upload(path, file, {
+          contentType: file.type,
+          upsert: false
+        });
+
+      if (error) {
+        throw new Error(
+          'Ngarkimi deshtoi per ' + documentLabels[name] +
+          ': ' + error.message
+        );
+      }
+
+      uploaded.push(path);
+      payload[name] = path;
     }
 
-    const path = `${applicationId}/${name}.${extension}`;
-
-    const { error } = await supa.storage
-      .from('application-documents')
-      .upload(path, file, {
-        contentType: file.type,
-        upsert: false
-      });
+    const { error } = await supa
+      .from('applications')
+      .insert({ id: applicationId, data: payload });
 
     if (error) {
-      throw new Error(
-        'Ngarkimi i dokumentit deshtoi: ' + name
-      );
+      throw new Error('Ruajtja e aplikimit deshtoi: ' + error.message);
     }
 
-    payload[name] = path;
+    form.reset();
+    form.dispatchEvent(new Event('change'));
+    return applicationId;
+
+  } catch (error) {
+    if (uploaded.length) {
+      await supa.storage
+        .from('application-documents')
+        .remove(uploaded);
+    }
+    throw error;
   }
-
-  const { error } = await supa
-    .from('applications')
-    .insert({
-      id: applicationId,
-      data: payload
-    });
-
-  if (error) {
-    throw new Error(
-      'Ruajtja e aplikimit deshtoi: ' + error.message
-    );
-  }
-
-  form.reset();
-  form.dispatchEvent(new Event('change'));
-
-  return applicationId;
 }
 
 window.besaSubmit = submitApplication;
 
-// =============================================
-// EMERTIMET PROFESIONALE TE FUSHAVE
-// =============================================
+// EMERTIMET E FUSHAVE
 
 const fieldLabels = {
-  emri: 'Emri',
-  mbiemri: 'Mbiemri',
-  emri_babait: 'Emri i babait',
-  pesha: 'Pesha',
-  gjatesia: 'Gjatesia',
-  gjinia: 'Gjinia',
-  adresa: 'Adresa',
-  vendbanimi: 'Vendbanimi',
-  vendi_lindjes: 'Vendi i lindjes',
-  data_lindjes: 'Data e lindjes',
-  telefoni: 'Numri i telefonit',
   pozita: 'Pozita e aplikuar',
+  emri: 'Emri',
+  emri_babait: 'Emri i babait',
+  mbiemri: 'Mbiemri',
+  numri_leternjoftimit: 'Numri i leternjoftimit',
+  data_lindjes: 'Data e lindjes',
+  vendi_lindjes: 'Vendi i lindjes',
+  vendbanimi: 'Vendbanimi',
+  adresa: 'Adresa',
+  telefoni: 'Numri i telefonit',
+  perkatesia_etnike: 'Perkatesia etnike',
+  perkatesia_tjeter: 'Perkatesia etnike - Tjeter',
+  gjinia: 'Gjinia',
+  pesha: 'Pesha (kg)',
+  gjatesia: 'Gjatesia (cm)',
+  pergatitja_shkollore: 'Pergatitja shkollore',
   drejtimi: 'Drejtimi i shkollimit',
-  trajnime: 'Trajnimet profesionale',
+  trajnime: 'Trajnimet per sigurim',
+  pershkrim_trajnimeve: 'Pershkrimi i trajnimeve',
   patente: 'Patenta e shoferit',
   kategorite: 'Kategorite e patentes',
-  denuar: 'I denuar',
+  denuar: 'I denuar me heret',
+  statusi_ligjor: 'Statusi ligjor',
+  arsyeja_statusit: 'Arsyeja / Sqarimi',
   xhirollogaria: 'Xhirollogaria bankare',
-  data_aplikimit: 'Data e aplikimit',
+  kontakti_familjar: 'Kontakti familjar',
+  telefoni_familjar: 'Telefoni i kontaktit familjar',
   lidhja_familjare: 'Lidhja familjare',
-  kontakti_familjar: 'Kontakti familjar'
+  data_aplikimit: 'Data e aplikimit'
 };
 
 function formatFieldLabel(key) {
   const normalized = String(key)
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_');
+    .trim().toLowerCase().replace(/\s+/g, '_');
 
   return fieldLabels[normalized] ||
-    normalized
-      .replaceAll('_', ' ')
+    normalized.replaceAll('_', ' ')
       .replace(/^./, character => character.toUpperCase());
 }
 
-// =============================================
 // HR DASHBOARD
-// =============================================
 
 async function loadHR() {
   const root = document.querySelector('#hrList');
@@ -279,14 +291,13 @@ async function loadHR() {
 
   root.replaceChildren();
 
-  if (!data.length) {
+  if (!data?.length) {
     root.textContent = 'Nuk ka aplikime ende.';
     return;
   }
 
   for (const record of data) {
     const d = record.data || {};
-
     const card = document.createElement('article');
     card.className = 'hr-card';
 
@@ -294,17 +305,16 @@ async function loadHR() {
     heading.textContent =
       [d.emri, d.mbiemri].filter(Boolean).join(' ') +
       ' — ' + (d.pozita || '');
-
     card.append(heading);
 
     const meta = document.createElement('p');
     meta.textContent =
       new Date(record.created_at).toLocaleString('sq-AL') +
-      ' · ' + record.status;
-
+      ' · ' + (record.status || 'I ri');
     card.append(meta);
 
     const show = document.createElement('button');
+    show.type = 'button';
     show.textContent = 'Shiko / Printo A4';
     show.onclick = () => printApplication(record);
     card.append(show);
@@ -312,11 +322,7 @@ async function loadHR() {
     const select = document.createElement('select');
 
     for (const value of [
-      'I ri',
-      'Ne shqyrtim',
-      'Interviste',
-      'Pranuar',
-      'Refuzuar'
+      'I ri', 'Ne shqyrtim', 'Interviste', 'Pranuar', 'Refuzuar'
     ]) {
       const option = document.createElement('option');
       option.value = value;
@@ -324,9 +330,10 @@ async function loadHR() {
       select.append(option);
     }
 
-    select.value = record.status;
+    select.value = record.status || 'I ri';
 
     select.onchange = async () => {
+      const previous = record.status || 'I ri';
       const { error } = await supa
         .from('applications')
         .update({ status: select.value })
@@ -334,17 +341,21 @@ async function loadHR() {
 
       if (error) {
         alert(error.message);
+        select.value = previous;
+      } else {
+        record.status = select.value;
       }
     };
 
     card.append(select);
 
-    for (const field of fileFields) {
+    // Buton i vecante per secilen ane te leternjoftimit
+    for (const field of allDocumentFields) {
       if (!d[field]) continue;
 
       const button = document.createElement('button');
-      button.textContent =
-        'Hap ' + formatFieldLabel(field.replace('_file', ''));
+      button.type = 'button';
+      button.textContent = 'Hap ' + documentLabels[field];
 
       button.onclick = async () => {
         const { data: link, error } = await supa.storage
@@ -372,13 +383,10 @@ async function loadHR() {
 document.querySelector('#refreshHR')
   .addEventListener('click', loadHR);
 
-// =============================================
-// PRINTIMI PROFESIONAL A4
-// =============================================
+// PRINTIMI A4
 
 function printApplication(record) {
   const d = record.data || {};
-
   const win = window.open('', '_blank');
 
   if (!win) {
@@ -386,205 +394,234 @@ function printApplication(record) {
     return;
   }
 
-  const esc = value =>
-    String(value ?? '').replace(
-      /[&<>"']/g,
-      character => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[character])
-    );
+  const esc = value => String(value ?? '').replace(
+    /[&<>"']/g,
+    character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character])
+  );
 
-  const excluded = new Set([
-    ...fileFields,
-    'pajtimi'
-  ]);
-
-  const preferredOrder = [
-    'emri',
-    'mbiemri',
-    'emri_babait',
-    'gjinia',
-    'data_lindjes',
-    'vendi_lindjes',
-    'vendbanimi',
-    'adresa',
-    'telefoni',
-    'pozita',
-    'drejtimi',
-    'trajnime',
-    'patente',
-    'kategorite',
-    'denuar',
-    'gjatesia',
-    'pesha',
-    'xhirollogaria',
-    'lidhja_familjare',
-    'kontakti_familjar',
-    'data_aplikimit'
+  const groups = [
+    {
+      number: '01',
+      title: 'Pozita dhe te dhenat personale',
+      keys: [
+        'pozita', 'emri', 'emri_babait', 'mbiemri',
+        'numri_leternjoftimit', 'data_lindjes',
+        'vendi_lindjes', 'vendbanimi', 'adresa',
+        'telefoni', 'perkatesia_etnike',
+        'perkatesia_tjeter', 'gjinia', 'pesha', 'gjatesia'
+      ]
+    },
+    {
+      number: '02',
+      title: 'Arsimi dhe kualifikimet',
+      keys: [
+        'pergatitja_shkollore', 'drejtimi',
+        'trajnime', 'pershkrim_trajnimeve',
+        'patente', 'kategorite', 'denuar',
+        'statusi_ligjor', 'arsyeja_statusit'
+      ]
+    },
+    {
+      number: '03',
+      title: 'Banka dhe kontakti familjar',
+      keys: [
+        'xhirollogaria', 'kontakti_familjar',
+        'telefoni_familjar', 'lidhja_familjare'
+      ]
+    }
   ];
 
-  const entries = Object.entries(d)
-    .filter(([key]) => !excluded.has(key));
+  const excluded = new Set([
+    ...allDocumentFields, 'pajtimi', 'data_aplikimit'
+  ]);
 
-  entries.sort(([a], [b]) => {
-    const indexA = preferredOrder.indexOf(a);
-    const indexB = preferredOrder.indexOf(b);
+  const used = new Set(excluded);
+  const valueText = value =>
+    Array.isArray(value) ? value.join(', ') : String(value ?? '');
 
-    return (
-      (indexA === -1 ? 999 : indexA) -
-      (indexB === -1 ? 999 : indexB)
-    );
-  });
-
-  const rows = entries.map(([key, value]) => {
-    const label = formatFieldLabel(key);
-
-    let displayValue = Array.isArray(value)
-      ? value.join(', ')
-      : value;
-
-    if (key === 'data_aplikimit' && displayValue) {
-      const date = new Date(displayValue);
-      if (!Number.isNaN(date.getTime())) {
-        displayValue = date.toLocaleString('sq-AL');
-      }
-    }
+  function fieldHTML(key) {
+    const value = valueText(d[key]);
 
     return `
-      <tr>
-        <td class="field-label">${esc(label)}</td>
-        <td>${esc(displayValue)}</td>
-      </tr>
+      <div class="field">
+        <span class="field-label">${esc(formatFieldLabel(key))}</span>
+        <span class="field-value">${esc(value || '—')}</span>
+      </div>
     `;
-  }).join('');
+  }
 
-  const created = new Date(record.created_at)
-    .toLocaleString('sq-AL');
+  let sections = '';
 
-  const style = `
-    <style>
-      @page {
-        size: A4 portrait;
-        margin: 11mm;
-      }
+  for (const group of groups) {
+    group.keys.forEach(key => used.add(key));
 
-      * {
-        box-sizing: border-box;
-      }
+    const visible = group.keys.filter(key =>
+      d[key] !== undefined &&
+      d[key] !== null &&
+      valueText(d[key]).trim() !== ''
+    );
 
-      body {
-        font-family: Arial, sans-serif;
-        font-size: 9pt;
-        color: #172b42;
+    sections += `
+      <section class="section">
+        <h2>${group.number} · ${esc(group.title)}</h2>
+        <div class="fields">
+          ${visible.map(fieldHTML).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  const extra = Object.keys(d).filter(key =>
+    !used.has(key) &&
+    d[key] !== null &&
+    d[key] !== undefined &&
+    valueText(d[key]).trim() !== ''
+  );
+
+  if (extra.length) {
+    sections += `
+      <section class="section">
+        <h2>04 · Te dhena shtese</h2>
+        <div class="fields">${extra.map(fieldHTML).join('')}</div>
+      </section>
+    `;
+  }
+
+  const docs = allDocumentFields
+    .filter(key => key !== 'leternjoftimi_file' || d[key])
+    .map(key => `
+      <div>
+        ${esc(documentLabels[key])}:
+        <strong>${d[key] ? 'Bashkengjitur' : 'Nuk eshte bashkengjitur'}</strong>
+      </div>
+    `).join('');
+
+  sections += `
+    <section class="section">
+      <h2>05 · Dokumentet e bashkengjitura</h2>
+      <div class="docs">${docs}</div>
+    </section>
+  `;
+
+  const date = new Date(record.created_at).toLocaleString('sq-AL');
+  const logo = new URL('besa-logo.png', window.location.href).href;
+
+  const css = `
+    @page { size: A4 portrait; margin: 11mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 10px Arial, sans-serif;
+      color: #172a40;
+      background: #edf1f5;
+    }
+    .toolbar {
+      padding: 12px;
+      background: #152f4c;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    .toolbar button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .sheet {
+      background: white;
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto;
+      padding: 11mm;
+    }
+    .heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #b52733;
+      padding-bottom: 10px;
+    }
+    .logo {
+      width: 65px;
+      max-height: 55px;
+      object-fit: contain;
+    }
+    h1 {
+      font-size: 17px;
+      margin: 4px 0;
+    }
+    .meta {
+      margin: 10px 0;
+      padding: 8px;
+      background: #f2f5f8;
+      font-size: 9px;
+      overflow-wrap: anywhere;
+    }
+    .section {
+      margin-bottom: 9px;
+    }
+    .section h2 {
+      font-size: 11px;
+      padding: 6px;
+      background: #eaf0f5;
+      border-left: 3px solid #b52733;
+      break-after: avoid;
+    }
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 8px;
+    }
+    .field {
+      display: grid;
+      grid-template-columns: 43% 57%;
+      border-bottom: 1px solid #dce4ec;
+      padding: 5px 3px;
+      break-inside: avoid;
+    }
+    .field-label {
+      font-weight: bold;
+      color: #4b5c6d;
+      padding-right: 4px;
+    }
+    .field-value {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    .docs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      padding: 6px;
+    }
+    footer {
+      border-top: 1px solid #dce4ec;
+      margin-top: 12px;
+      padding-top: 8px;
+      font-size: 9px;
+    }
+    @media print {
+      body { background: white; }
+      .toolbar { display: none; }
+      .sheet {
+        width: auto;
+        min-height: 0;
         margin: 0;
-        background: white;
+        padding: 0;
       }
-
-      .toolbar {
-        display: flex;
-        gap: 10px;
-        padding: 12px;
-        background: #edf2f7;
-        margin-bottom: 15px;
+      .section h2 {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
       }
-
-      .toolbar button {
-        padding: 9px 16px;
-        border: 0;
-        border-radius: 5px;
-        background: #173b63;
-        color: white;
-        cursor: pointer;
-      }
-
-      .page {
-        width: 100%;
-        max-width: 188mm;
-        margin: auto;
-      }
-
-      header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-bottom: 2px solid #173b63;
-        padding-bottom: 9px;
-        margin-bottom: 10px;
-      }
-
-      header img {
-        width: 72px;
-        max-height: 55px;
-        object-fit: contain;
-      }
-
-      h1 {
-        font-size: 15pt;
-        margin: 5px 0;
-      }
-
-      .company {
-        font-weight: bold;
-        font-size: 11pt;
-      }
-
-      .application-number {
-        font-size: 8pt;
-        overflow-wrap: anywhere;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-      }
-
-      td {
-        border: 1px solid #d8e0e8;
-        padding: 4px 6px;
-        vertical-align: top;
-        line-height: 1.25;
-        overflow-wrap: anywhere;
-      }
-
-      .field-label {
-        width: 37%;
-        background: #edf2f7;
-        font-weight: bold;
-      }
-
-      tr {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-
-      footer {
-        margin-top: 12px;
-        padding-top: 7px;
-        border-top: 1px solid #d8e0e8;
-        font-size: 8pt;
-        color: #667788;
-      }
-
-      @media print {
-        .toolbar {
-          display: none !important;
-        }
-
-        body {
-          print-color-adjust: exact;
-          -webkit-print-color-adjust: exact;
-        }
-
-        .page {
-          max-width: none;
-        }
-      }
-    </style>
+    }
   `;
 
   win.document.write(`
@@ -592,41 +629,32 @@ function printApplication(record) {
     <html lang="sq">
     <head>
       <meta charset="utf-8">
-      <title>Aplikimi per pune - Besa Security</title>
-      ${style}
+      <title>Aplikimi A4 - Besa Security</title>
+      <style>${css}</style>
     </head>
     <body>
       <div class="toolbar">
-        <button onclick="window.print()">
-          Printo / Ruaj PDF
-        </button>
-        <button onclick="window.close()">
-          Mbyll
-        </button>
+        <button onclick="window.print()">Printo / Ruaj PDF</button>
+        <button onclick="window.close()">Mbyll</button>
       </div>
-
-      <main class="page">
-        <header>
-          <img src="${esc(new URL('besa-logo.png', window.location.href).href)}"
-               alt="Besa Security">
+      <main class="sheet">
+        <header class="heading">
+          <img class="logo" src="${esc(logo)}" alt="Besa Security">
           <div>
-            <div class="company">BESA SECURITY</div>
-            <h1>Formulari i aplikimit per pune</h1>
-            <div class="application-number">
-              Nr. aplikimit: ${esc(record.id)}
-            </div>
+            <strong>BESA SECURITY</strong>
+            <h1>FORMULARI I APLIKIMIT PER PUNE</h1>
+            <small>Departamenti i Burimeve Njerezore</small>
           </div>
         </header>
-
-        <table>
-          <tbody>${rows}</tbody>
-        </table>
-
+        <div class="meta">
+          <div>Nr. aplikimit: <strong>${esc(record.id)}</strong></div>
+          <div>Data: <strong>${esc(date)}</strong></div>
+          <div>Statusi: <strong>${esc(record.status || 'I ri')}</strong></div>
+        </div>
+        ${sections}
         <footer>
-          Data e regjistrimit: ${esc(created)}
-          <br>
-          Dokumentet e bashkengjitura shikohen vecmas
-          ne Dashboard HR.
+          BESA SECURITY · Your safety, our promise.
+          <p>Dokumentet hapen vecmas ne Dashboard HR.</p>
         </footer>
       </main>
     </body>
@@ -635,9 +663,5 @@ function printApplication(record) {
 
   win.document.close();
 }
-
-// =============================================
-// START
-// =============================================
 
 refresh();
