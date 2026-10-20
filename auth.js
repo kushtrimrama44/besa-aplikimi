@@ -2,8 +2,7 @@
 'use strict';
 
 // BESA SECURITY - Aplikim per Pune
-// auth.js v1.6
-// Raport A4, nje faqe, me poziten lart djathtas.
+// auth.js v1.7 - Raport kompakt, nje faqe A4
 
 const cfg = window.BESA_CONFIG;
 
@@ -37,7 +36,7 @@ const documentLabels = {
   leternjoftimi_para_file: 'Leternjoftimi - para',
   leternjoftimi_prapa_file: 'Leternjoftimi - prapa',
   leternjoftimi_file: 'Leternjoftimi (i vjeter)',
-  kartela_bankare_file: 'Dokumenti bankar',
+  kartela_bankare_file: 'Vertetimi bankar',
   certifikata_trajnimi_file: 'Certifikata e trajnimeve',
   certifikata_shkollore_file: 'Certifikata shkollore'
 };
@@ -48,7 +47,6 @@ const allDocumentFields = [
 ];
 
 const labels = {
-  pozita: 'Pozita e aplikuar',
   emri: 'Emri',
   mbiemri: 'Mbiemri',
   emri_babait: 'Emri i babait',
@@ -78,19 +76,6 @@ const labels = {
   arsyeja_statusit: 'Arsyeja / sqarimi'
 };
 
-const bankNames = {
-  RBKO: 'Raiffeisen Bank Kosovo',
-  TEB: 'TEB',
-  NLB: 'NLB Banka',
-  PCB: 'ProCredit Bank',
-  BKT: 'Banka Kombetare Tregtare - BKT',
-  BPB: 'Banka per Biznes - BPB',
-  BE: 'Banka Ekonomike',
-  ZIRAAT: 'Ziraat Bank Kosova',
-  CREDINS: 'Banka Credins Kosove',
-  PRIBANK: 'PriBank'
-};
-
 const ordered = [
   'emri',
   'mbiemri',
@@ -118,20 +103,31 @@ const ordered = [
   'telefoni_familjar'
 ];
 
-function formatNumber(number) {
-  return number == null
-    ? 'Pa numer'
-    : String(number).padStart(4, '0');
+const bankNames = {
+  RBKO: 'Raiffeisen Bank Kosovo',
+  TEB: 'TEB',
+  NLB: 'NLB Banka',
+  PCB: 'ProCredit Bank',
+  BKT: 'BKT Kosove',
+  BPB: 'Banka per Biznes',
+  BE: 'Banka Ekonomike',
+  ZIRAAT: 'Ziraat Bank Kosova',
+  CREDINS: 'Credins Kosove',
+  PRIBANK: 'PriBank'
+};
+
+function formatNumber(n) {
+  return n == null ? 'Pa numer' : String(n).padStart(4, '0');
 }
 
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-  }[char]));
+  }[c]));
 }
 
 function displayValue(key, data) {
@@ -140,8 +136,8 @@ function displayValue(key, data) {
   if (key === 'emri_bankes') {
     if (value === 'Tjeter' || value === 'Tjetër') {
       value = data.emri_bankes_tjeter || 'Tjeter';
-    } else if (bankNames[value]) {
-      value = bankNames[value] + ' (' + value + ')';
+    } else {
+      value = bankNames[value] || value;
     }
   }
 
@@ -159,96 +155,78 @@ function displayValue(key, data) {
   return String(value ?? '').trim() || '—';
 }
 
-// ============================================
-// SESIONI DHE AUTENTIKIMI
-// ============================================
+// --------------------------------------------
+// LOGIN
+// --------------------------------------------
 
 async function refresh() {
-  if (gate) gate.hidden = false;
-  if (appView) appView.hidden = true;
-  if (hrView) hrView.hidden = true;
-
+  gate.hidden = false;
+  appView.hidden = true;
+  hrView.hidden = true;
   currentRole = null;
 
   if (!supa) {
-    if (authStatus) {
-      authStatus.textContent = 'Kontrollo config.js.';
-    }
+    authStatus.textContent = 'Kontrollo config.js.';
     return;
   }
 
-  const {
-    data: { user },
-    error
-  } = await supa.auth.getUser();
+  const { data: userData, error } = await supa.auth.getUser();
+  const user = userData?.user;
 
   if (error || !user) {
-    if (authStatus) authStatus.textContent = '';
+    authStatus.textContent = '';
     return;
   }
 
-  const roleResult = await supa
+  const result = await supa
     .from('account_roles')
     .select('role')
     .eq('user_id', user.id)
     .single();
 
-  if (
-    roleResult.error ||
-    !['aplikant', 'hr'].includes(roleResult.data?.role)
-  ) {
-    await supa.auth.signOut();
+  const role = result.data?.role;
 
-    if (authStatus) {
-      authStatus.textContent =
-        'Llogaria nuk ka rol te autorizuar.';
-    }
+  if (result.error || !['aplikant', 'hr'].includes(role)) {
+    await supa.auth.signOut();
+    authStatus.textContent = 'Llogaria nuk eshte e autorizuar.';
     return;
   }
 
-  currentRole = roleResult.data.role;
+  currentRole = role;
+  gate.hidden = true;
 
-  if (gate) gate.hidden = true;
-
-  if (currentRole === 'hr') {
-    if (hrView) hrView.hidden = false;
+  if (role === 'hr') {
+    hrView.hidden = false;
     await loadHR();
   } else {
-    if (appView) appView.hidden = false;
-
+    appView.hidden = false;
     const form = document.querySelector('#application');
-
-    if (form) {
-      form.reset();
-      form.dispatchEvent(new Event('change'));
-    }
+    form.reset();
+    form.dispatchEvent(new Event('change'));
   }
 }
 
-document.querySelector('#loginForm')
-  ?.addEventListener('submit', async event => {
+document.querySelector('#loginForm').addEventListener(
+  'submit',
+  async event => {
     event.preventDefault();
 
     if (!supa) {
-      authStatus.textContent =
-        'Supabase nuk eshte konfiguruar.';
+      authStatus.textContent = 'Supabase nuk eshte konfiguruar.';
       return;
     }
 
     const username = document.querySelector('#username')
       .value.trim().toLowerCase();
 
-    const password = document.querySelector('#password')
-      .value;
+    const password = document.querySelector('#password').value;
 
-    const allowed = [
+    if (![
       'aplikant1',
       'aplikant2',
       'aplikant3',
       'admin'
-    ];
-
-    if (!allowed.includes(username)) {
+    ].includes(username)) {
       authStatus.textContent = 'Username i pavlefshem.';
       return;
     }
@@ -259,13 +237,13 @@ document.querySelector('#loginForm')
     });
 
     if (error) {
-      authStatus.textContent =
-        'Kyçja deshtoi. Kontrollo kredencialet.';
+      authStatus.textContent = 'Kyçja deshtoi.';
       return;
     }
 
     await refresh();
-  });
+  }
+);
 
 document.querySelectorAll('.logout').forEach(button => {
   button.addEventListener('click', async () => {
@@ -274,9 +252,9 @@ document.querySelectorAll('.logout').forEach(button => {
   });
 });
 
-// ============================================
-// DERGIMI I APLIKIMIT
-// ============================================
+// --------------------------------------------
+// RUAJTJA E APLIKIMIT
+// --------------------------------------------
 
 async function submitApplication(form) {
   if (!supa || currentRole !== 'aplikant') {
@@ -295,7 +273,7 @@ async function submitApplication(form) {
   payload.kategorite = fd.getAll('kategorite');
   payload.data_aplikimit = new Date().toISOString();
 
-  const applicationId = crypto.randomUUID();
+  const id = crypto.randomUUID();
   const uploaded = [];
 
   try {
@@ -305,19 +283,15 @@ async function submitApplication(form) {
       if (!file?.size) {
         if (requiredFiles.includes(name)) {
           throw new Error(
-            'Dokumenti i detyrueshem mungon: ' +
-            documentLabels[name]
+            'Dokumenti mungon: ' + documentLabels[name]
           );
         }
         continue;
       }
 
-      const extension = file.name
-        .split('.')
-        .pop()
-        .toLowerCase();
+      const ext = file.name.split('.').pop().toLowerCase();
 
-      const allowedTypes = {
+      const allowed = {
         pdf: 'application/pdf',
         jpg: 'image/jpeg',
         jpeg: 'image/jpeg',
@@ -325,19 +299,16 @@ async function submitApplication(form) {
       };
 
       if (
-        !allowedTypes[extension] ||
-        file.type !== allowedTypes[extension] ||
+        !allowed[ext] ||
+        allowed[ext] !== file.type ||
         file.size > 5242880
       ) {
         throw new Error(
-          'Dokument i pavlefshem: ' +
-          documentLabels[name] +
-          '. Lejohen PDF/JPG/PNG deri ne 5 MB.'
+          'Dokument i pavlefshem: ' + documentLabels[name]
         );
       }
 
-      const path =
-        applicationId + '/' + name + '.' + extension;
+      const path = id + '/' + name + '.' + ext;
 
       const { error } = await supa.storage
         .from('application-documents')
@@ -346,40 +317,26 @@ async function submitApplication(form) {
           upsert: false
         });
 
-      if (error) {
-        throw new Error(
-          'Ngarkimi deshtoi: ' + error.message
-        );
-      }
+      if (error) throw new Error(error.message);
 
       uploaded.push(path);
       payload[name] = path;
     }
 
-    const {
-      data: inserted,
-      error
-    } = await supa
+    const { data, error } = await supa
       .from('applications')
-      .insert({
-        id: applicationId,
-        data: payload
-      })
+      .insert({ id, data: payload })
       .select('application_number')
       .single();
 
-    if (error) {
-      throw new Error(
-        'Ruajtja deshtoi: ' + error.message
-      );
-    }
+    if (error) throw new Error(error.message);
 
     form.reset();
     form.dispatchEvent(new Event('change'));
 
     return {
-      id: applicationId,
-      number: inserted?.application_number ?? null
+      id,
+      number: data?.application_number ?? null
     };
 
   } catch (error) {
@@ -389,10 +346,7 @@ async function submitApplication(form) {
         .remove(uploaded);
 
       if (cleanup.error) {
-        console.error(
-          'Dokumentet nuk u pastruan:',
-          cleanup.error
-        );
+        console.error('Pastrimi deshtoi:', cleanup.error);
       }
     }
 
@@ -402,13 +356,12 @@ async function submitApplication(form) {
 
 window.besaSubmit = submitApplication;
 
-// ============================================
+// --------------------------------------------
 // DASHBOARD HR
-// ============================================
+// --------------------------------------------
 
 async function loadHR() {
   const root = document.querySelector('#hrList');
-  if (!root) return;
 
   root.textContent = 'Duke ngarkuar...';
 
@@ -419,9 +372,7 @@ async function loadHR() {
 
   const { data, error } = await supa
     .from('applications')
-    .select(
-      'id,application_number,created_at,data,status'
-    )
+    .select('id,application_number,created_at,data,status')
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -440,33 +391,32 @@ async function loadHR() {
   for (const record of data) {
     const d = record.data || {};
     const card = document.createElement('article');
+
     card.className = 'hr-card';
 
-    const heading = document.createElement('h3');
+    const title = document.createElement('h3');
 
-    heading.textContent =
+    title.textContent =
       'Nr. ' + formatNumber(record.application_number) +
       ' · ' +
       [d.emri, d.mbiemri].filter(Boolean).join(' ') +
-      ' — ' +
-      (d.pozita || '');
+      ' — ' + (d.pozita || '');
 
-    card.append(heading);
+    card.append(title);
 
     const meta = document.createElement('p');
 
     function updateMeta() {
       meta.textContent =
-        new Date(record.created_at)
-          .toLocaleString('sq-AL') +
-        ' · ' +
-        (record.status || 'I ri');
+        new Date(record.created_at).toLocaleString('sq-AL') +
+        ' · ' + (record.status || 'I ri');
     }
 
     updateMeta();
     card.append(meta);
 
     const printButton = document.createElement('button');
+
     printButton.type = 'button';
     printButton.textContent = 'Shiko / Printo A4';
     printButton.onclick = () => printApplication(record);
@@ -483,6 +433,7 @@ async function loadHR() {
       'Refuzuar'
     ]) {
       const option = document.createElement('option');
+
       option.value = value;
       option.textContent = value;
       select.append(option);
@@ -513,9 +464,9 @@ async function loadHR() {
       if (!d[field]) continue;
 
       const button = document.createElement('button');
+
       button.type = 'button';
-      button.textContent =
-        'Hap ' + documentLabels[field];
+      button.textContent = 'Hap ' + documentLabels[field];
 
       button.onclick = async () => {
         const { data: link, error } = await supa.storage
@@ -541,11 +492,11 @@ async function loadHR() {
 }
 
 document.querySelector('#refreshHR')
-  ?.addEventListener('click', loadHR);
+  .addEventListener('click', loadHR);
 
-// ============================================
-// RAPORTI A4 - NJE FAQE
-// ============================================
+// --------------------------------------------
+// PRINTIMI A4
+// --------------------------------------------
 
 function printApplication(record) {
   const d = record.data || {};
@@ -566,18 +517,18 @@ function printApplication(record) {
     window.location.href
   ).href;
 
-  // Nje rresht per secilen nga 24 fushat.
-  const rows = ordered.map((key, index) =>
-    '<div class="field">' +
-      '<span class="field-label">' +
-        (index + 1) + '. ' + esc(labels[key]) +
-      '</span>' +
-      '<span class="field-value">' +
-        esc(displayValue(key, d)) +
-      '</span>' +
-    '</div>'
-  ).join('');
+  const rows = ordered.map((key, i) => `
+    <div class="field">
+      <span class="field-label">
+        ${i + 1}. ${esc(labels[key])}
+      </span>
+      <span class="field-value">
+        ${esc(displayValue(key, d))}
+      </span>
+    </div>
+  `).join('');
 
+  // Pozita nuk futet te te dhenat shtese.
   const extraKeys = [
     'patente',
     'statusi_ligjor',
@@ -587,24 +538,24 @@ function printApplication(record) {
     return value != null && String(value).trim() !== '';
   });
 
-  const extra = extraKeys.map(key =>
-    '<div class="field">' +
-      '<span class="field-label">' +
-        esc(labels[key] || key) +
-      '</span>' +
-      '<span class="field-value">' +
-        esc(displayValue(key, d)) +
-      '</span>' +
-    '</div>'
-  ).join('');
+  const extra = extraKeys.map(key => `
+    <div class="field">
+      <span class="field-label">
+        ${esc(labels[key])}
+      </span>
+      <span class="field-value">
+        ${esc(displayValue(key, d))}
+      </span>
+    </div>
+  `).join('');
 
   const docs = allDocumentFields
     .filter(key => d[key])
-    .map(key =>
-      '<span class="doc">&#10003; ' +
-        esc(documentLabels[key]) +
-      '</span>'
-    ).join('');
+    .map(key => `
+      <span class="doc">
+        &#10003; ${esc(documentLabels[key])}
+      </span>
+    `).join('');
 
   const css = `
     @page {
@@ -616,38 +567,36 @@ function printApplication(record) {
       box-sizing: border-box;
     }
 
-    html,
-    body {
+    html, body {
       margin: 0;
       padding: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #182d42;
+      font-family: Arial, sans-serif;
+      color: #18324a;
       background: #e8edf2;
     }
 
     .toolbar {
-      padding: 12px;
       text-align: center;
-      background: #183852;
+      background: #173650;
+      padding: 12px;
     }
 
     .toolbar button {
-      padding: 10px 16px;
+      padding: 10px 18px;
       margin: 0 5px;
+      cursor: pointer;
       border: 0;
       border-radius: 4px;
-      cursor: pointer;
     }
 
     .sheet {
-      width: 210mm;
-      height: 297mm;
+      width: 209mm;
+      height: 296mm;
       margin: 12px auto;
-      padding: 9mm 10mm;
+      padding: 8mm 9mm;
       background: white;
       overflow: hidden;
-      box-shadow: 0 3px 12px rgba(0,0,0,.12);
-      position: relative;
+      box-shadow: 0 3px 14px #0002;
     }
 
     .content {
@@ -657,149 +606,143 @@ function printApplication(record) {
 
     .heading {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #b42733;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 2px solid #b52733;
+      padding-bottom: 6px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       min-width: 0;
     }
 
     .logo {
       width: 78px;
-      max-height: 65px;
+      max-height: 55px;
       object-fit: contain;
     }
 
     .company {
-      font-size: 13px;
-      font-weight: bold;
+      font-size: 11px;
+      font-weight: 800;
     }
 
     h1 {
+      font-size: 13px;
       margin: 3px 0;
-      font-size: 14px;
       line-height: 1.15;
     }
 
     .subtitle {
-      font-size: 9px;
-      color: #586b7e;
+      font-size: 8px;
+      color: #607183;
     }
 
     .iso {
       font-size: 8px;
       text-align: right;
       white-space: nowrap;
+      align-self: flex-start;
     }
 
-    /* PANELI I SIPERM */
     .meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
       align-items: center;
-      gap: 12px;
-      margin: 9px 0;
-      padding: 10px;
-      background: #f0f3f6;
-      font-size: 10px;
+      gap: 8px;
+      margin: 7px 0;
+      padding: 8px 10px;
+      background: #eef2f6;
+      font-size: 9px;
     }
 
     .meta-left {
       display: flex;
       flex-direction: column;
-      gap: 5px;
-      min-width: 0;
+      gap: 3px;
     }
 
     .meta-right {
+      border-left: 2px solid #b52733;
       text-align: center;
-      padding: 8px 12px;
-      border-left: 2px solid #b42733;
+      padding: 6px 8px;
       min-width: 0;
     }
 
     .position-label {
-      display: block;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: bold;
-      color: #526579;
-      letter-spacing: .5px;
-      margin-bottom: 6px;
+      color: #526477;
+      letter-spacing: .4px;
     }
 
     .position-value {
-      font-size: 17px;
+      margin-top: 5px;
+      font-size: 16px;
       font-weight: 800;
-      color: #173b63;
+      color: #173650;
       overflow-wrap: anywhere;
-      line-height: 1.2;
     }
 
     .section-title {
-      font-size: 11px;
-      margin: 9px 0 4px;
-      padding: 5px;
-      background: #edf1f5;
-      border-left: 3px solid #b42733;
+      font-size: 10px;
+      margin: 7px 0 3px;
+      padding: 4px 6px;
+      background: #edf2f6;
+      border-left: 3px solid #b52733;
     }
 
     .field {
       display: grid;
-      grid-template-columns: 42% minmax(0, 58%);
-      align-items: start;
-      min-height: 21px;
-      padding: 4px 5px;
-      border-bottom: 1px solid #e0e5ea;
-      font-size: 10px;
-      line-height: 1.25;
-      break-inside: avoid;
+      grid-template-columns: 44% minmax(0, 56%);
+      align-items: center;
+      gap: 4px;
+      min-height: 19px;
+      padding: 2px 5px;
+      border-bottom: 1px solid #dfe5eb;
+      font-size: 9px;
+      line-height: 1.2;
     }
 
     .field-label {
       font-weight: bold;
-      padding-right: 8px;
-      min-width: 0;
+      color: #43566a;
     }
 
     .field-value {
+      min-width: 0;
       overflow-wrap: anywhere;
       white-space: pre-line;
-      min-width: 0;
     }
 
     .documents {
       display: flex;
       flex-wrap: wrap;
-      gap: 5px 12px;
-      padding: 6px;
-      font-size: 9px;
+      gap: 4px 12px;
+      padding: 4px;
+      font-size: 8px;
     }
 
     .footer {
       display: flex;
       justify-content: space-between;
-      margin-top: 10px;
-      padding-top: 6px;
+      margin-top: 7px;
+      padding-top: 5px;
       border-top: 1px solid #dce3e9;
-      font-size: 9px;
+      font-size: 8px;
+      color: #526477;
     }
 
     @media print {
-      html,
-      body {
+      html, body {
         width: 210mm;
         height: 297mm;
-        margin: 0;
-        padding: 0;
-        background: white;
         overflow: hidden;
+        background: white;
       }
 
       .toolbar {
@@ -807,33 +750,17 @@ function printApplication(record) {
       }
 
       .sheet {
-        width: 210mm;
-        height: 297mm;
+        width: 209mm;
+        height: 296mm;
         margin: 0;
-        padding: 9mm 10mm;
+        padding: 8mm 9mm;
         box-shadow: none;
         overflow: hidden;
         break-after: avoid;
+        page-break-after: avoid;
       }
 
-      .content {
-        break-inside: avoid;
-      }
-
-      .heading,
-      .meta,
-      .field,
-      .documents,
-      .footer {
-        break-inside: avoid;
-      }
-
-      .section-title {
-        break-after: avoid;
-      }
-
-      .meta,
-      .section-title {
+      .meta, .section-title {
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }
@@ -845,12 +772,9 @@ function printApplication(record) {
     <html lang="sq">
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport"
-        content="width=device-width, initial-scale=1">
       <title>Aplikimi ${esc(number)} - Besa Security</title>
       <style>${css}</style>
     </head>
-
     <body>
 
       <div class="toolbar">
@@ -882,14 +806,11 @@ function printApplication(record) {
             </div>
 
             <div class="iso">
-              <strong>
-                ISO9001:2015 &amp; ISO14001:2015
-              </strong>
+              <b>ISO9001:2015 &amp; ISO14001:2015</b>
               <div>v.1.1</div>
             </div>
           </header>
 
-          <!-- POZITA LART DJATHTAS -->
           <div class="meta">
 
             <div class="meta-left">
@@ -897,12 +818,10 @@ function printApplication(record) {
                 <b>Nr. aplikimit:</b>
                 ${esc(number)}
               </div>
-
               <div>
                 <b>Data:</b>
                 ${esc(date)}
               </div>
-
               <div>
                 <b>Statusi:</b>
                 ${esc(record.status || 'I ri')}
@@ -910,10 +829,9 @@ function printApplication(record) {
             </div>
 
             <div class="meta-right">
-              <span class="position-label">
+              <div class="position-label">
                 POZITA E APLIKUAR
-              </span>
-
+              </div>
               <div class="position-value">
                 ${esc(d.pozita || '—')}
               </div>
@@ -946,9 +864,7 @@ function printApplication(record) {
             <span>
               BESA SECURITY · Your safety, our promise.
             </span>
-            <span>
-              Nr. ${esc(number)}
-            </span>
+            <span>Nr. ${esc(number)}</span>
           </div>
 
         </div>
@@ -976,17 +892,16 @@ function printApplication(record) {
             parseFloat(style.paddingTop) -
             parseFloat(style.paddingBottom);
 
-          const contentWidth = content.scrollWidth;
-          const contentHeight = content.scrollHeight;
+          const naturalWidth = content.scrollWidth;
+          const naturalHeight = content.scrollHeight;
 
           const scale = Math.min(
             1,
-            availableWidth / Math.max(contentWidth, 1),
-            availableHeight / Math.max(contentHeight, 1)
+            availableWidth / Math.max(naturalWidth, 1),
+            availableHeight / Math.max(naturalHeight, 1)
           );
 
-          content.style.transform =
-            'scale(' + scale + ')';
+          content.style.transform = 'scale(' + scale + ')';
         }
 
         function prepareAndPrint() {
@@ -996,9 +911,8 @@ function printApplication(record) {
 
         window.addEventListener('load', fitToA4);
         window.addEventListener('beforeprint', fitToA4);
-        window.addEventListener('resize', fitToA4);
 
-        if (document.fonts && document.fonts.ready) {
+        if (document.fonts) {
           document.fonts.ready.then(fitToA4);
         }
       <\/script>
@@ -1009,9 +923,5 @@ function printApplication(record) {
 
   win.document.close();
 }
-
-// ============================================
-// START
-// ============================================
 
 refresh();
