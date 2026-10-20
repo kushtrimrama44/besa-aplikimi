@@ -1,8 +1,9 @@
 
 'use strict';
 
-// BESA SECURITY - Aplikim per Pune v1.4
-// Raporti i optimizuar per A4.
+// BESA SECURITY - Aplikim per Pune
+// auth.js v1.6
+// Raport A4, nje faqe, me poziten lart djathtas.
 
 const cfg = window.BESA_CONFIG;
 
@@ -18,7 +19,7 @@ const supa = cfg?.url && cfg?.anonKey && window.supabase
 const gate = document.querySelector('#loginGate');
 const appView = document.querySelector('#appView');
 const hrView = document.querySelector('#hrView');
-const status = document.querySelector('#authStatus');
+const authStatus = document.querySelector('#authStatus');
 
 let currentRole = null;
 
@@ -74,8 +75,7 @@ const labels = {
   telefoni_familjar: 'Telefoni familjar',
   patente: 'Patenta e shoferit',
   statusi_ligjor: 'Statusi ligjor',
-  arsyeja_statusit: 'Arsyeja / sqarimi',
-  perkatesia_tjeter: 'Perkatesia - Tjeter'
+  arsyeja_statusit: 'Arsyeja / sqarimi'
 };
 
 const bankNames = {
@@ -118,17 +118,21 @@ const ordered = [
   'telefoni_familjar'
 ];
 
-const formatNumber = n =>
-  n == null ? 'Pa numer' : String(n).padStart(4, '0');
+function formatNumber(number) {
+  return number == null
+    ? 'Pa numer'
+    : String(number).padStart(4, '0');
+}
 
-const esc = value =>
-  String(value ?? '').replace(/[&<>"']/g, char => ({
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
   }[char]));
+}
 
 function displayValue(key, data) {
   let value = data[key];
@@ -141,7 +145,10 @@ function displayValue(key, data) {
     }
   }
 
-  if (key === 'perkatesia_etnike' && value === 'Tjeter') {
+  if (
+    key === 'perkatesia_etnike' &&
+    (value === 'Tjeter' || value === 'Tjetër')
+  ) {
     value = data.perkatesia_tjeter || value;
   }
 
@@ -153,17 +160,20 @@ function displayValue(key, data) {
 }
 
 // ============================================
-// LOGIN DHE SESIONI
+// SESIONI DHE AUTENTIKIMI
 // ============================================
 
 async function refresh() {
-  gate.hidden = false;
-  appView.hidden = true;
-  hrView.hidden = true;
+  if (gate) gate.hidden = false;
+  if (appView) appView.hidden = true;
+  if (hrView) hrView.hidden = true;
+
   currentRole = null;
 
   if (!supa) {
-    status.textContent = 'Kontrollo config.js.';
+    if (authStatus) {
+      authStatus.textContent = 'Kontrollo config.js.';
+    }
     return;
   }
 
@@ -173,7 +183,7 @@ async function refresh() {
   } = await supa.auth.getUser();
 
   if (error || !user) {
-    status.textContent = '';
+    if (authStatus) authStatus.textContent = '';
     return;
   }
 
@@ -188,53 +198,69 @@ async function refresh() {
     !['aplikant', 'hr'].includes(roleResult.data?.role)
   ) {
     await supa.auth.signOut();
-    status.textContent = 'Nuk keni rol te autorizuar.';
+
+    if (authStatus) {
+      authStatus.textContent =
+        'Llogaria nuk ka rol te autorizuar.';
+    }
     return;
   }
 
   currentRole = roleResult.data.role;
-  gate.hidden = true;
+
+  if (gate) gate.hidden = true;
 
   if (currentRole === 'hr') {
-    hrView.hidden = false;
+    if (hrView) hrView.hidden = false;
     await loadHR();
   } else {
-    appView.hidden = false;
+    if (appView) appView.hidden = false;
+
     const form = document.querySelector('#application');
-    form.reset();
-    form.dispatchEvent(new Event('change'));
+
+    if (form) {
+      form.reset();
+      form.dispatchEvent(new Event('change'));
+    }
   }
 }
 
 document.querySelector('#loginForm')
-  .addEventListener('submit', async event => {
+  ?.addEventListener('submit', async event => {
     event.preventDefault();
 
     if (!supa) {
-      status.textContent = 'Supabase nuk eshte konfiguruar.';
+      authStatus.textContent =
+        'Supabase nuk eshte konfiguruar.';
       return;
     }
 
     const username = document.querySelector('#username')
       .value.trim().toLowerCase();
 
-    if (![
+    const password = document.querySelector('#password')
+      .value;
+
+    const allowed = [
       'aplikant1',
       'aplikant2',
       'aplikant3',
       'admin'
-    ].includes(username)) {
-      status.textContent = 'Username i pavlefshem.';
+    ];
+
+    if (!allowed.includes(username)) {
+      authStatus.textContent = 'Username i pavlefshem.';
       return;
     }
 
     const { error } = await supa.auth.signInWithPassword({
       email: username + '@besa.login',
-      password: document.querySelector('#password').value
+      password
     });
 
     if (error) {
-      status.textContent = 'Kyçja deshtoi.';
+      authStatus.textContent =
+        'Kyçja deshtoi. Kontrollo kredencialet.';
       return;
     }
 
@@ -253,23 +279,23 @@ document.querySelectorAll('.logout').forEach(button => {
 // ============================================
 
 async function submitApplication(form) {
-  if (currentRole !== 'aplikant' || !supa) {
+  if (!supa || currentRole !== 'aplikant') {
     throw new Error('Nuk jeni i autorizuar.');
   }
 
   const fd = new FormData(form);
-  const data = {};
+  const payload = {};
 
   for (const [key, value] of fd.entries()) {
     if (!(value instanceof File)) {
-      data[key] = value;
+      payload[key] = value;
     }
   }
 
-  data.kategorite = fd.getAll('kategorite');
-  data.data_aplikimit = new Date().toISOString();
+  payload.kategorite = fd.getAll('kategorite');
+  payload.data_aplikimit = new Date().toISOString();
 
-  const id = crypto.randomUUID();
+  const applicationId = crypto.randomUUID();
   const uploaded = [];
 
   try {
@@ -279,15 +305,19 @@ async function submitApplication(form) {
       if (!file?.size) {
         if (requiredFiles.includes(name)) {
           throw new Error(
-            'Dokumenti mungon: ' + documentLabels[name]
+            'Dokumenti i detyrueshem mungon: ' +
+            documentLabels[name]
           );
         }
         continue;
       }
 
-      const ext = file.name.split('.').pop().toLowerCase();
+      const extension = file.name
+        .split('.')
+        .pop()
+        .toLowerCase();
 
-      const allowed = {
+      const allowedTypes = {
         pdf: 'application/pdf',
         jpg: 'image/jpeg',
         jpeg: 'image/jpeg',
@@ -295,16 +325,19 @@ async function submitApplication(form) {
       };
 
       if (
-        !allowed[ext] ||
-        allowed[ext] !== file.type ||
+        !allowedTypes[extension] ||
+        file.type !== allowedTypes[extension] ||
         file.size > 5242880
       ) {
         throw new Error(
-          'Dokument i pavlefshem: ' + documentLabels[name]
+          'Dokument i pavlefshem: ' +
+          documentLabels[name] +
+          '. Lejohen PDF/JPG/PNG deri ne 5 MB.'
         );
       }
 
-      const path = id + '/' + name + '.' + ext;
+      const path =
+        applicationId + '/' + name + '.' + extension;
 
       const { error } = await supa.storage
         .from('application-documents')
@@ -314,11 +347,13 @@ async function submitApplication(form) {
         });
 
       if (error) {
-        throw new Error('Ngarkimi deshtoi: ' + error.message);
+        throw new Error(
+          'Ngarkimi deshtoi: ' + error.message
+        );
       }
 
       uploaded.push(path);
-      data[name] = path;
+      payload[name] = path;
     }
 
     const {
@@ -326,28 +361,41 @@ async function submitApplication(form) {
       error
     } = await supa
       .from('applications')
-      .insert({ id, data })
+      .insert({
+        id: applicationId,
+        data: payload
+      })
       .select('application_number')
       .single();
 
     if (error) {
-      throw new Error('Ruajtja deshtoi: ' + error.message);
+      throw new Error(
+        'Ruajtja deshtoi: ' + error.message
+      );
     }
 
     form.reset();
     form.dispatchEvent(new Event('change'));
 
     return {
-      id,
+      id: applicationId,
       number: inserted?.application_number ?? null
     };
 
   } catch (error) {
     if (uploaded.length) {
-      await supa.storage
+      const cleanup = await supa.storage
         .from('application-documents')
         .remove(uploaded);
+
+      if (cleanup.error) {
+        console.error(
+          'Dokumentet nuk u pastruan:',
+          cleanup.error
+        );
+      }
     }
+
     throw error;
   }
 }
@@ -355,18 +403,25 @@ async function submitApplication(form) {
 window.besaSubmit = submitApplication;
 
 // ============================================
-// HR DASHBOARD
+// DASHBOARD HR
 // ============================================
 
 async function loadHR() {
   const root = document.querySelector('#hrList');
+  if (!root) return;
+
   root.textContent = 'Duke ngarkuar...';
 
-  if (!supa) return;
+  if (!supa) {
+    root.textContent = 'Supabase nuk eshte konfiguruar.';
+    return;
+  }
 
   const { data, error } = await supa
     .from('applications')
-    .select('id,application_number,created_at,data,status')
+    .select(
+      'id,application_number,created_at,data,status'
+    )
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -393,23 +448,30 @@ async function loadHR() {
       'Nr. ' + formatNumber(record.application_number) +
       ' · ' +
       [d.emri, d.mbiemri].filter(Boolean).join(' ') +
-      ' — ' + (d.pozita || '');
+      ' — ' +
+      (d.pozita || '');
 
     card.append(heading);
 
     const meta = document.createElement('p');
 
-    meta.textContent =
-      new Date(record.created_at).toLocaleString('sq-AL') +
-      ' · ' + (record.status || 'I ri');
+    function updateMeta() {
+      meta.textContent =
+        new Date(record.created_at)
+          .toLocaleString('sq-AL') +
+        ' · ' +
+        (record.status || 'I ri');
+    }
 
+    updateMeta();
     card.append(meta);
 
-    const print = document.createElement('button');
-    print.type = 'button';
-    print.textContent = 'Shiko / Printo A4';
-    print.onclick = () => printApplication(record);
-    card.append(print);
+    const printButton = document.createElement('button');
+    printButton.type = 'button';
+    printButton.textContent = 'Shiko / Printo A4';
+    printButton.onclick = () => printApplication(record);
+
+    card.append(printButton);
 
     const select = document.createElement('select');
 
@@ -441,22 +503,24 @@ async function loadHR() {
         select.value = previous;
       } else {
         record.status = select.value;
+        updateMeta();
       }
     };
 
     card.append(select);
 
-    for (const key of allDocumentFields) {
-      if (!d[key]) continue;
+    for (const field of allDocumentFields) {
+      if (!d[field]) continue;
 
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = 'Hap ' + documentLabels[key];
+      button.textContent =
+        'Hap ' + documentLabels[field];
 
       button.onclick = async () => {
         const { data: link, error } = await supa.storage
           .from('application-documents')
-          .createSignedUrl(d[key], 60);
+          .createSignedUrl(d[field], 60);
 
         if (error) {
           alert(error.message);
@@ -477,10 +541,10 @@ async function loadHR() {
 }
 
 document.querySelector('#refreshHR')
-  .addEventListener('click', loadHR);
+  ?.addEventListener('click', loadHR);
 
 // ============================================
-// RAPORTI A4 - VERSIONI I RI
+// RAPORTI A4 - NJE FAQE
 // ============================================
 
 function printApplication(record) {
@@ -493,6 +557,7 @@ function printApplication(record) {
   }
 
   const number = formatNumber(record.application_number);
+
   const date = new Date(record.created_at)
     .toLocaleString('sq-AL');
 
@@ -501,115 +566,108 @@ function printApplication(record) {
     window.location.href
   ).href;
 
-  // 24 fushat, ne nje kolone.
-  const rows = ordered.map((key, index) => `
-    <div class="field">
-      <div class="field-label">
-        ${index + 1}. ${esc(labels[key])}
-      </div>
-      <div class="field-value">
-        ${esc(displayValue(key, d))}
-      </div>
-    </div>
-  `).join('');
+  // Nje rresht per secilen nga 24 fushat.
+  const rows = ordered.map((key, index) =>
+    '<div class="field">' +
+      '<span class="field-label">' +
+        (index + 1) + '. ' + esc(labels[key]) +
+      '</span>' +
+      '<span class="field-value">' +
+        esc(displayValue(key, d)) +
+      '</span>' +
+    '</div>'
+  ).join('');
 
-  // Te dhenat shtese shfaqen vetem nese jane plotesuar.
-  const excluded = new Set([
-    ...ordered,
-    ...allDocumentFields,
-    'pozita',
-    'data_aplikimit',
-    'pajtimi',
-    'emri_bankes_tjeter',
-    'perkatesia_tjeter'
-  ]);
-
-  const extraKeys = Object.keys(d).filter(key => {
-    if (excluded.has(key)) return false;
+  const extraKeys = [
+    'patente',
+    'statusi_ligjor',
+    'arsyeja_statusit'
+  ].filter(key => {
     const value = d[key];
     return value != null && String(value).trim() !== '';
   });
 
-  const extra = extraKeys.map(key => `
-    <div class="field">
-      <div class="field-label">
-        ${esc(labels[key] || key.replaceAll('_', ' '))}
-      </div>
-      <div class="field-value">
-        ${esc(displayValue(key, d))}
-      </div>
-    </div>
-  `).join('');
+  const extra = extraKeys.map(key =>
+    '<div class="field">' +
+      '<span class="field-label">' +
+        esc(labels[key] || key) +
+      '</span>' +
+      '<span class="field-value">' +
+        esc(displayValue(key, d)) +
+      '</span>' +
+    '</div>'
+  ).join('');
 
   const docs = allDocumentFields
     .filter(key => d[key])
-    .map(key => `
-      <span class="doc-item">
-        &#10003; ${esc(documentLabels[key])}
-      </span>
-    `).join('');
+    .map(key =>
+      '<span class="doc">&#10003; ' +
+        esc(documentLabels[key]) +
+      '</span>'
+    ).join('');
 
   const css = `
     @page {
       size: A4 portrait;
-      margin: 8mm;
+      margin: 0;
     }
 
     * {
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
-    }
-
-    body {
-      background: #e8edf2;
-      color: #172b40;
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 9px;
-      line-height: 1.25;
+      color: #182d42;
+      background: #e8edf2;
     }
 
     .toolbar {
-      text-align: center;
-      background: #173651;
       padding: 12px;
+      text-align: center;
+      background: #183852;
     }
 
     .toolbar button {
-      padding: 10px 18px;
-      border: none;
+      padding: 10px 16px;
+      margin: 0 5px;
+      border: 0;
       border-radius: 4px;
       cursor: pointer;
-      margin: 0 5px;
-      font-size: 12px;
     }
 
-    /* A4 me permasa reale */
     .sheet {
       width: 210mm;
-      min-height: 297mm;
+      height: 297mm;
       margin: 12px auto;
-      padding: 8mm;
+      padding: 9mm 10mm;
       background: white;
-      box-shadow: 0 3px 16px rgba(0,0,0,.12);
+      overflow: hidden;
+      box-shadow: 0 3px 12px rgba(0,0,0,.12);
+      position: relative;
+    }
+
+    .content {
+      width: 100%;
+      transform-origin: top left;
     }
 
     .heading {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 10px;
-      padding-bottom: 7px;
-      border-bottom: 2px solid #ad2733;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #b42733;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       min-width: 0;
     }
 
@@ -620,118 +678,128 @@ function printApplication(record) {
     }
 
     .company {
-      font-weight: 800;
-      font-size: 12px;
-      letter-spacing: .3px;
+      font-size: 13px;
+      font-weight: bold;
     }
 
     h1 {
-      margin: 4px 0 2px;
-      font-size: 13px;
+      margin: 3px 0;
+      font-size: 14px;
       line-height: 1.15;
     }
 
     .subtitle {
-      color: #526579;
       font-size: 9px;
+      color: #586b7e;
     }
 
     .iso {
+      font-size: 8px;
       text-align: right;
       white-space: nowrap;
-      align-self: flex-start;
-      font-weight: bold;
-      font-size: 8px;
     }
 
-    .iso small {
-      display: block;
-      font-weight: normal;
-      margin-top: 3px;
-    }
-
+    /* PANELI I SIPERM */
     .meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 4px 10px;
-      background: #f1f4f7;
-      padding: 7px 9px;
-      margin: 8px 0;
-      border-radius: 3px;
+      align-items: center;
+      gap: 12px;
+      margin: 9px 0;
+      padding: 10px;
+      background: #f0f3f6;
+      font-size: 10px;
     }
 
-    .application-number {
+    .meta-left {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .meta-right {
+      text-align: center;
+      padding: 8px 12px;
+      border-left: 2px solid #b42733;
+      min-width: 0;
+    }
+
+    .position-label {
+      display: block;
+      font-size: 10px;
+      font-weight: bold;
+      color: #526579;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+
+    .position-value {
+      font-size: 17px;
       font-weight: 800;
-      font-size: 11px;
+      color: #173b63;
+      overflow-wrap: anywhere;
+      line-height: 1.2;
     }
 
     .section-title {
-      margin: 8px 0 3px;
-      padding: 5px 7px;
-      font-size: 10px;
-      background: #edf2f6;
-      border-left: 3px solid #ad2733;
-      break-after: avoid;
+      font-size: 11px;
+      margin: 9px 0 4px;
+      padding: 5px;
+      background: #edf1f5;
+      border-left: 3px solid #b42733;
     }
 
-    /* Nje fushe per rresht */
     .field {
       display: grid;
-      grid-template-columns: 40% minmax(0, 60%);
+      grid-template-columns: 42% minmax(0, 58%);
       align-items: start;
-      gap: 5px;
-      min-height: 20px;
-      padding: 3px 5px;
-      border-bottom: 1px solid #e1e6eb;
+      min-height: 21px;
+      padding: 4px 5px;
+      border-bottom: 1px solid #e0e5ea;
+      font-size: 10px;
+      line-height: 1.25;
       break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .field:nth-of-type(even) {
-      background: #fafbfc;
     }
 
     .field-label {
       font-weight: bold;
-      color: #405367;
+      padding-right: 8px;
+      min-width: 0;
     }
 
     .field-value {
       overflow-wrap: anywhere;
-      white-space: pre-wrap;
+      white-space: pre-line;
       min-width: 0;
     }
 
     .documents {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px 12px;
-      padding: 5px;
-      font-size: 8px;
-    }
-
-    .doc-item {
-      white-space: normal;
+      gap: 5px 12px;
+      padding: 6px;
+      font-size: 9px;
     }
 
     .footer {
-      margin-top: 9px;
-      padding-top: 5px;
-      border-top: 1px solid #dce3ea;
       display: flex;
       justify-content: space-between;
-      font-size: 8px;
-      color: #526579;
+      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px solid #dce3e9;
+      font-size: 9px;
     }
 
     @media print {
-      html, body {
-        width: auto;
-        height: auto;
+      html,
+      body {
+        width: 210mm;
+        height: 297mm;
         margin: 0;
+        padding: 0;
         background: white;
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
+        overflow: hidden;
       }
 
       .toolbar {
@@ -739,11 +807,17 @@ function printApplication(record) {
       }
 
       .sheet {
-        width: 100%;
-        min-height: 0;
+        width: 210mm;
+        height: 297mm;
         margin: 0;
-        padding: 0;
+        padding: 9mm 10mm;
         box-shadow: none;
+        overflow: hidden;
+        break-after: avoid;
+      }
+
+      .content {
+        break-inside: avoid;
       }
 
       .heading,
@@ -758,15 +832,10 @@ function printApplication(record) {
         break-after: avoid;
       }
 
-      .field {
-        min-height: 19px;
-        padding: 2.5px 5px;
-      }
-    }
-
-    @media screen and (max-width: 850px) {
-      .sheet {
-        margin: 10px auto;
+      .meta,
+      .section-title {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
       }
     }
   `;
@@ -776,7 +845,8 @@ function printApplication(record) {
     <html lang="sq">
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="viewport"
+        content="width=device-width, initial-scale=1">
       <title>Aplikimi ${esc(number)} - Besa Security</title>
       <style>${css}</style>
     </head>
@@ -784,7 +854,7 @@ function printApplication(record) {
     <body>
 
       <div class="toolbar">
-        <button onclick="window.print()">
+        <button onclick="prepareAndPrint()">
           Printo / Ruaj PDF
         </button>
         <button onclick="window.close()">
@@ -792,77 +862,147 @@ function printApplication(record) {
         </button>
       </div>
 
-      <main class="sheet">
+      <main class="sheet" id="sheet">
+        <div class="content" id="content">
 
-        <header class="heading">
-          <div class="brand">
-            <img
-              class="logo"
-              src="${esc(logo)}"
-              alt="Besa Security">
+          <header class="heading">
+            <div class="brand">
+              <img
+                class="logo"
+                src="${esc(logo)}"
+                alt="Besa Security">
 
-            <div>
-              <div class="company">BESA SECURITY</div>
-              <h1>FORMULARI I APLIKIMIT PER PUNE</h1>
-              <div class="subtitle">
-                Departamenti i Burimeve Njerezore
+              <div>
+                <div class="company">BESA SECURITY</div>
+                <h1>FORMULARI I APLIKIMIT PER PUNE</h1>
+                <div class="subtitle">
+                  Departamenti i Burimeve Njerezore
+                </div>
               </div>
             </div>
+
+            <div class="iso">
+              <strong>
+                ISO9001:2015 &amp; ISO14001:2015
+              </strong>
+              <div>v.1.1</div>
+            </div>
+          </header>
+
+          <!-- POZITA LART DJATHTAS -->
+          <div class="meta">
+
+            <div class="meta-left">
+              <div>
+                <b>Nr. aplikimit:</b>
+                ${esc(number)}
+              </div>
+
+              <div>
+                <b>Data:</b>
+                ${esc(date)}
+              </div>
+
+              <div>
+                <b>Statusi:</b>
+                ${esc(record.status || 'I ri')}
+              </div>
+            </div>
+
+            <div class="meta-right">
+              <span class="position-label">
+                POZITA E APLIKUAR
+              </span>
+
+              <div class="position-value">
+                ${esc(d.pozita || '—')}
+              </div>
+            </div>
+
           </div>
 
-          <div class="iso">
-            ISO9001:2015 &amp; ISO14001:2015
-            <small>v.1.1</small>
-          </div>
-        </header>
-
-        <div class="meta">
-          <div class="application-number">
-            Nr. aplikimit: ${esc(number)}
-          </div>
-          <div>
-            <strong>Data:</strong> ${esc(date)}
-          </div>
-          <div>
-            <strong>Pozita:</strong> ${esc(d.pozita || '—')}
-          </div>
-          <div>
-            <strong>Statusi:</strong>
-            ${esc(record.status || 'I ri')}
-          </div>
-        </div>
-
-        <h2 class="section-title">
-          TE DHENAT E APLIKANTIT
-        </h2>
-
-        ${rows}
-
-        ${extra ? `
           <h2 class="section-title">
-            TE DHENA SHTESE
+            TE DHENAT E APLIKANTIT
           </h2>
-          ${extra}
-        ` : ''}
 
-        <h2 class="section-title">
-          DOKUMENTET E BASHKENGJITURA
-        </h2>
+          ${rows}
 
-        <div class="documents">
-          ${docs || 'Nuk ka dokumente'}
+          ${extra ? `
+            <h2 class="section-title">
+              TE DHENA SHTESE
+            </h2>
+            ${extra}
+          ` : ''}
+
+          <h2 class="section-title">
+            DOKUMENTET E BASHKENGJITURA
+          </h2>
+
+          <div class="documents">
+            ${docs || 'Nuk ka dokumente'}
+          </div>
+
+          <div class="footer">
+            <span>
+              BESA SECURITY · Your safety, our promise.
+            </span>
+            <span>
+              Nr. ${esc(number)}
+            </span>
+          </div>
+
         </div>
-
-        <div class="footer">
-          <span>
-            BESA SECURITY · Your safety, our promise.
-          </span>
-          <span>
-            Nr. ${esc(number)}
-          </span>
-        </div>
-
       </main>
+
+      <script>
+        function fitToA4() {
+          const sheet = document.getElementById('sheet');
+          const content = document.getElementById('content');
+
+          if (!sheet || !content) return;
+
+          content.style.transform = 'none';
+          content.style.width = '100%';
+
+          const style = getComputedStyle(sheet);
+
+          const availableWidth =
+            sheet.clientWidth -
+            parseFloat(style.paddingLeft) -
+            parseFloat(style.paddingRight);
+
+          const availableHeight =
+            sheet.clientHeight -
+            parseFloat(style.paddingTop) -
+            parseFloat(style.paddingBottom);
+
+          const contentWidth = content.scrollWidth;
+          const contentHeight = content.scrollHeight;
+
+          const scale = Math.min(
+            1,
+            availableWidth / Math.max(contentWidth, 1),
+            availableHeight / Math.max(contentHeight, 1)
+          );
+
+          content.style.transform =
+            'scale(' + scale + ')';
+        }
+
+        function prepareAndPrint() {
+          fitToA4();
+          window.print();
+        }
+
+        window.addEventListener('load', fitToA4);
+        window.addEventListener('beforeprint', fitToA4);
+        window.addEventListener('resize', fitToA4);
+
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(fitToA4);
+        }
+      <\/script>
+
     </body>
     </html>
   `);
