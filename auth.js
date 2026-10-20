@@ -1,8 +1,8 @@
 
 'use strict';
 
-// BESA SECURITY - Aplikim per Pune v1.3
-// Perdor konfigurimin ekzistues config.js.
+// BESA SECURITY - Aplikim per Pune v1.4
+// Raporti i optimizuar per A4.
 
 const cfg = window.BESA_CONFIG;
 
@@ -22,10 +22,6 @@ const status = document.querySelector('#authStatus');
 
 let currentRole = null;
 
-// ============================================
-// DOKUMENTET
-// ============================================
-
 const fileFields = [
   'leternjoftimi_para_file',
   'leternjoftimi_prapa_file',
@@ -37,10 +33,10 @@ const fileFields = [
 const requiredFiles = fileFields.slice(0, 3);
 
 const documentLabels = {
-  leternjoftimi_para_file: 'Leternjoftimi - pjesa e perparme',
-  leternjoftimi_prapa_file: 'Leternjoftimi - pjesa e pasme',
-  leternjoftimi_file: 'Leternjoftimi (aplikim i vjeter)',
-  kartela_bankare_file: 'Vertetimi bankar',
+  leternjoftimi_para_file: 'Leternjoftimi - para',
+  leternjoftimi_prapa_file: 'Leternjoftimi - prapa',
+  leternjoftimi_file: 'Leternjoftimi (i vjeter)',
+  kartela_bankare_file: 'Dokumenti bankar',
   certifikata_trajnimi_file: 'Certifikata e trajnimeve',
   certifikata_shkollore_file: 'Certifikata shkollore'
 };
@@ -50,14 +46,10 @@ const allDocumentFields = [
   'leternjoftimi_file'
 ];
 
-// ============================================
-// EMERTIMET E FUSHAVE
-// ============================================
-
 const labels = {
   pozita: 'Pozita e aplikuar',
-  emri: 'Emer',
-  mbiemri: 'Mbiemer',
+  emri: 'Emri',
+  mbiemri: 'Mbiemri',
   emri_babait: 'Emri i babait',
   gjinia: 'Gjinia',
   data_lindjes: 'Data e lindjes',
@@ -65,7 +57,6 @@ const labels = {
   numri_leternjoftimit: 'Nr. i leternjoftimit',
   xhirollogaria: 'Xhirollogaria bankare',
   emri_bankes: 'Emri i bankes',
-  emri_bankes_tjeter: 'Emri i bankes - Tjeter',
   adresa: 'Adresa',
   vendbanimi: 'Vendbanimi',
   telefoni: 'Nr. i telefonit',
@@ -77,14 +68,14 @@ const labels = {
   gjatesia: 'Gjatesia (cm)',
   pesha: 'Pesha (kg)',
   perkatesia_etnike: 'Perkatesia etnike',
-  perkatesia_tjeter: 'Perkatesia etnike - Tjeter',
   pergatitja_shkollore: 'Pergatitja shkollore',
   kontakti_familjar: 'Kontakti familjar',
   lidhja_familjare: 'Lidhja familjare',
   telefoni_familjar: 'Telefoni familjar',
   patente: 'Patenta e shoferit',
   statusi_ligjor: 'Statusi ligjor',
-  arsyeja_statusit: 'Arsyeja / sqarimi'
+  arsyeja_statusit: 'Arsyeja / sqarimi',
+  perkatesia_tjeter: 'Perkatesia - Tjeter'
 };
 
 const bankNames = {
@@ -92,7 +83,7 @@ const bankNames = {
   TEB: 'TEB',
   NLB: 'NLB Banka',
   PCB: 'ProCredit Bank',
-  BKT: 'Banka Kombetare Tregtare - BKT Kosove',
+  BKT: 'Banka Kombetare Tregtare - BKT',
   BPB: 'Banka per Biznes - BPB',
   BE: 'Banka Ekonomike',
   ZIRAAT: 'Ziraat Bank Kosova',
@@ -100,7 +91,6 @@ const bankNames = {
   PRIBANK: 'PriBank'
 };
 
-// Renditja e sakte e 24 fushave ne raportin A4.
 const ordered = [
   'emri',
   'mbiemri',
@@ -128,14 +118,8 @@ const ordered = [
   'telefoni_familjar'
 ];
 
-// ============================================
-// FUNKSIONET NDIHMESE
-// ============================================
-
-const formatNumber = number =>
-  number == null
-    ? 'Pa numer'
-    : String(number).padStart(4, '0');
+const formatNumber = n =>
+  n == null ? 'Pa numer' : String(n).padStart(4, '0');
 
 const esc = value =>
   String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -157,6 +141,10 @@ function displayValue(key, data) {
     }
   }
 
+  if (key === 'perkatesia_etnike' && value === 'Tjeter') {
+    value = data.perkatesia_tjeter || value;
+  }
+
   if (Array.isArray(value)) {
     return value.join(', ') || '—';
   }
@@ -165,7 +153,7 @@ function displayValue(key, data) {
 }
 
 // ============================================
-// AUTENTIKIMI
+// LOGIN DHE SESIONI
 // ============================================
 
 async function refresh() {
@@ -212,16 +200,11 @@ async function refresh() {
     await loadHR();
   } else {
     appView.hidden = false;
-
     const form = document.querySelector('#application');
     form.reset();
     form.dispatchEvent(new Event('change'));
   }
 }
-
-// ============================================
-// LOGIN
-// ============================================
 
 document.querySelector('#loginForm')
   .addEventListener('submit', async event => {
@@ -235,10 +218,12 @@ document.querySelector('#loginForm')
     const username = document.querySelector('#username')
       .value.trim().toLowerCase();
 
-    if (
-      !['aplikant1', 'aplikant2', 'aplikant3', 'admin']
-        .includes(username)
-    ) {
+    if (![
+      'aplikant1',
+      'aplikant2',
+      'aplikant3',
+      'admin'
+    ].includes(username)) {
       status.textContent = 'Username i pavlefshem.';
       return;
     }
@@ -249,17 +234,12 @@ document.querySelector('#loginForm')
     });
 
     if (error) {
-      status.textContent =
-        'Kyçja deshtoi. Kontrollo kredencialet.';
+      status.textContent = 'Kyçja deshtoi.';
       return;
     }
 
     await refresh();
   });
-
-// ============================================
-// LOGOUT
-// ============================================
 
 document.querySelectorAll('.logout').forEach(button => {
   button.addEventListener('click', async () => {
@@ -299,8 +279,7 @@ async function submitApplication(form) {
       if (!file?.size) {
         if (requiredFiles.includes(name)) {
           throw new Error(
-            'Dokumenti i detyrueshem mungon: ' +
-            documentLabels[name]
+            'Dokumenti mungon: ' + documentLabels[name]
           );
         }
         continue;
@@ -335,16 +314,13 @@ async function submitApplication(form) {
         });
 
       if (error) {
-        throw new Error(
-          'Ngarkimi deshtoi: ' + error.message
-        );
+        throw new Error('Ngarkimi deshtoi: ' + error.message);
       }
 
       uploaded.push(path);
       data[name] = path;
     }
 
-    // Supabase e gjeneron numrin rendor automatikisht.
     const {
       data: inserted,
       error
@@ -355,9 +331,7 @@ async function submitApplication(form) {
       .single();
 
     if (error) {
-      throw new Error(
-        'Ruajtja deshtoi: ' + error.message
-      );
+      throw new Error('Ruajtja deshtoi: ' + error.message);
     }
 
     form.reset();
@@ -374,7 +348,6 @@ async function submitApplication(form) {
         .from('application-documents')
         .remove(uploaded);
     }
-
     throw error;
   }
 }
@@ -393,9 +366,7 @@ async function loadHR() {
 
   const { data, error } = await supa
     .from('applications')
-    .select(
-      'id,application_number,created_at,data,status'
-    )
+    .select('id,application_number,created_at,data,status')
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -475,7 +446,6 @@ async function loadHR() {
 
     card.append(select);
 
-    // Dokumentet e bashkengjitura
     for (const key of allDocumentFields) {
       if (!d[key]) continue;
 
@@ -510,7 +480,7 @@ document.querySelector('#refreshHR')
   .addEventListener('click', loadHR);
 
 // ============================================
-// RAPORTI A4 - NJE KOLONE
+// RAPORTI A4 - VERSIONI I RI
 // ============================================
 
 function printApplication(record) {
@@ -522,210 +492,281 @@ function printApplication(record) {
     return;
   }
 
+  const number = formatNumber(record.application_number);
+  const date = new Date(record.created_at)
+    .toLocaleString('sq-AL');
+
   const logo = new URL(
     'besa-logo.png',
     window.location.href
   ).href;
 
-  const date = new Date(record.created_at)
-    .toLocaleString('sq-AL');
-
-  // 24 fushat ne renditjen e kerkuar.
+  // 24 fushat, ne nje kolone.
   const rows = ordered.map((key, index) => `
     <div class="field">
-      <span class="label">
+      <div class="field-label">
         ${index + 1}. ${esc(labels[key])}
-      </span>
-      <span class="value">
+      </div>
+      <div class="field-value">
         ${esc(displayValue(key, d))}
-      </span>
+      </div>
     </div>
   `).join('');
 
-  const used = new Set([
+  // Te dhenat shtese shfaqen vetem nese jane plotesuar.
+  const excluded = new Set([
     ...ordered,
     ...allDocumentFields,
+    'pozita',
     'data_aplikimit',
     'pajtimi',
-    'emri_bankes_tjeter'
+    'emri_bankes_tjeter',
+    'perkatesia_tjeter'
   ]);
 
-  const extra = Object.keys(d)
-    .filter(key =>
-      !used.has(key) &&
-      d[key] != null &&
-      String(d[key]).trim()
-    )
-    .map(key => `
-      <div class="field">
-        <span class="label">
-          ${esc(labels[key] || key.replaceAll('_', ' '))}
-        </span>
-        <span class="value">
-          ${esc(displayValue(key, d))}
-        </span>
+  const extraKeys = Object.keys(d).filter(key => {
+    if (excluded.has(key)) return false;
+    const value = d[key];
+    return value != null && String(value).trim() !== '';
+  });
+
+  const extra = extraKeys.map(key => `
+    <div class="field">
+      <div class="field-label">
+        ${esc(labels[key] || key.replaceAll('_', ' '))}
       </div>
-    `).join('');
+      <div class="field-value">
+        ${esc(displayValue(key, d))}
+      </div>
+    </div>
+  `).join('');
 
   const docs = allDocumentFields
     .filter(key => d[key])
     .map(key => `
-      <div>
-        ${esc(documentLabels[key])}:
-        <b>Bashkengjitur</b>
-      </div>
+      <span class="doc-item">
+        &#10003; ${esc(documentLabels[key])}
+      </span>
     `).join('');
 
-  // Logo 78px = 20% me e madhe se 65px.
   const css = `
     @page {
       size: A4 portrait;
-      margin: 10mm;
+      margin: 8mm;
     }
 
     * {
       box-sizing: border-box;
     }
 
-    body {
+    html, body {
       margin: 0;
-      background: #eef1f4;
-      color: #182c42;
-      font: 10px Arial, sans-serif;
+      padding: 0;
+    }
+
+    body {
+      background: #e8edf2;
+      color: #172b40;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9px;
+      line-height: 1.25;
     }
 
     .toolbar {
-      padding: 12px;
       text-align: center;
-      background: #163453;
+      background: #173651;
+      padding: 12px;
     }
 
     .toolbar button {
-      padding: 9px 16px;
-      margin: 0 5px;
-      border: 0;
+      padding: 10px 18px;
+      border: none;
       border-radius: 4px;
       cursor: pointer;
+      margin: 0 5px;
+      font-size: 12px;
     }
 
+    /* A4 me permasa reale */
     .sheet {
       width: 210mm;
       min-height: 297mm;
+      margin: 12px auto;
+      padding: 8mm;
       background: white;
-      margin: 14px auto;
-      padding: 10mm;
+      box-shadow: 0 3px 16px rgba(0,0,0,.12);
     }
 
     .heading {
       display: flex;
+      align-items: center;
       justify-content: space-between;
       gap: 10px;
-      align-items: flex-start;
-      border-bottom: 2px solid #b52733;
-      padding-bottom: 9px;
+      padding-bottom: 7px;
+      border-bottom: 2px solid #ad2733;
     }
 
     .brand {
       display: flex;
-      gap: 12px;
       align-items: center;
+      gap: 10px;
       min-width: 0;
     }
 
     .logo {
       width: 78px;
-      max-height: 66px;
+      max-height: 65px;
       object-fit: contain;
     }
 
-    .heading h1 {
-      font-size: 15px;
-      margin: 3px 0;
+    .company {
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: .3px;
+    }
+
+    h1 {
+      margin: 4px 0 2px;
+      font-size: 13px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      color: #526579;
+      font-size: 9px;
     }
 
     .iso {
       text-align: right;
       white-space: nowrap;
-      font-size: 9px;
+      align-self: flex-start;
       font-weight: bold;
+      font-size: 8px;
     }
 
     .iso small {
+      display: block;
       font-weight: normal;
+      margin-top: 3px;
     }
 
     .meta {
-      padding: 7px 8px;
-      margin: 9px 0;
-      background: #f0f4f8;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 10px;
+      background: #f1f4f7;
+      padding: 7px 9px;
+      margin: 8px 0;
+      border-radius: 3px;
     }
 
-    .meta > div {
-      margin: 3px 0;
+    .application-number {
+      font-weight: 800;
+      font-size: 11px;
     }
 
     .section-title {
-      font-size: 11px;
+      margin: 8px 0 3px;
+      padding: 5px 7px;
+      font-size: 10px;
       background: #edf2f6;
-      border-left: 3px solid #b52733;
-      padding: 6px;
-      margin: 11px 0 3px;
+      border-left: 3px solid #ad2733;
       break-after: avoid;
     }
 
+    /* Nje fushe per rresht */
     .field {
       display: grid;
-      grid-template-columns: 44% 56%;
-      padding: 4px 6px;
-      border-bottom: 1px solid #dbe3eb;
-      break-inside: avoid;
-      min-height: 19px;
-    }
-
-    .label {
-      font-weight: bold;
-      color: #4d5c6c;
-    }
-
-    .value {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .docs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 40% minmax(0, 60%);
+      align-items: start;
       gap: 5px;
+      min-height: 20px;
+      padding: 3px 5px;
+      border-bottom: 1px solid #e1e6eb;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .field:nth-of-type(even) {
+      background: #fafbfc;
+    }
+
+    .field-label {
+      font-weight: bold;
+      color: #405367;
+    }
+
+    .field-value {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      min-width: 0;
+    }
+
+    .documents {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
       padding: 5px;
+      font-size: 8px;
+    }
+
+    .doc-item {
+      white-space: normal;
     }
 
     .footer {
-      margin-top: 12px;
-      padding-top: 7px;
-      border-top: 1px solid #dbe3eb;
-      font-size: 9px;
+      margin-top: 9px;
+      padding-top: 5px;
+      border-top: 1px solid #dce3ea;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8px;
+      color: #526579;
     }
 
     @media print {
-      body {
+      html, body {
+        width: auto;
+        height: auto;
+        margin: 0;
         background: white;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
       }
 
       .toolbar {
-        display: none;
+        display: none !important;
       }
 
       .sheet {
-        width: auto;
+        width: 100%;
         min-height: 0;
         margin: 0;
         padding: 0;
+        box-shadow: none;
       }
 
+      .heading,
       .meta,
+      .field,
+      .documents,
+      .footer {
+        break-inside: avoid;
+      }
+
       .section-title {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
+        break-after: avoid;
+      }
+
+      .field {
+        min-height: 19px;
+        padding: 2.5px 5px;
+      }
+    }
+
+    @media screen and (max-width: 850px) {
+      .sheet {
+        margin: 10px auto;
       }
     }
   `;
@@ -734,13 +775,12 @@ function printApplication(record) {
     <!doctype html>
     <html lang="sq">
     <head>
-      <meta charset="utf-8">
-      <title>
-        Aplikimi ${esc(formatNumber(record.application_number))}
-        - Besa Security
-      </title>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Aplikimi ${esc(number)} - Besa Security</title>
       <style>${css}</style>
     </head>
+
     <body>
 
       <div class="toolbar">
@@ -759,62 +799,67 @@ function printApplication(record) {
             <img
               class="logo"
               src="${esc(logo)}"
-              alt="Besa Security"
-            >
+              alt="Besa Security">
+
             <div>
-              <strong>BESA SECURITY</strong>
+              <div class="company">BESA SECURITY</div>
               <h1>FORMULARI I APLIKIMIT PER PUNE</h1>
-              <small>
+              <div class="subtitle">
                 Departamenti i Burimeve Njerezore
-              </small>
+              </div>
             </div>
           </div>
 
           <div class="iso">
             ISO9001:2015 &amp; ISO14001:2015
-            <div><small>v.1.1</small></div>
+            <small>v.1.1</small>
           </div>
         </header>
 
         <div class="meta">
-          <div>
-            <strong>
-              Nr. aplikimit:
-              ${esc(formatNumber(record.application_number))}
-            </strong>
-          </div>
-          <div>Data: <b>${esc(date)}</b></div>
-          <div>
-            Statusi:
-            <b>${esc(record.status || 'I ri')}</b>
+          <div class="application-number">
+            Nr. aplikimit: ${esc(number)}
           </div>
           <div>
-            Pozita:
-            <b>${esc(d.pozita || '—')}</b>
+            <strong>Data:</strong> ${esc(date)}
+          </div>
+          <div>
+            <strong>Pozita:</strong> ${esc(d.pozita || '—')}
+          </div>
+          <div>
+            <strong>Statusi:</strong>
+            ${esc(record.status || 'I ri')}
           </div>
         </div>
 
         <h2 class="section-title">
-          Te dhenat e aplikantit
+          TE DHENAT E APLIKANTIT
         </h2>
 
         ${rows}
 
-        ${extra
-          ? '<h2 class="section-title">Te dhena shtese</h2>' +
-            extra
-          : ''}
+        ${extra ? `
+          <h2 class="section-title">
+            TE DHENA SHTESE
+          </h2>
+          ${extra}
+        ` : ''}
 
         <h2 class="section-title">
-          Dokumentet e bashkengjitura
+          DOKUMENTET E BASHKENGJITURA
         </h2>
 
-        <div class="docs">
+        <div class="documents">
           ${docs || 'Nuk ka dokumente'}
         </div>
 
         <div class="footer">
-          BESA SECURITY · Your safety, our promise.
+          <span>
+            BESA SECURITY · Your safety, our promise.
+          </span>
+          <span>
+            Nr. ${esc(number)}
+          </span>
         </div>
 
       </main>
