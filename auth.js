@@ -1,19 +1,23 @@
 
 'use strict';
 
-// BESA SECURITY - Aplikim per Pune
-// auth.js v2.2 - A4 nje rresht per fushe, grupime te kerkuara
+// BESA SECURITY - APLIKIM PER PUNE
+// auth.js v2.3
+// Raporti A4 - nje fushe per rresht
+// Grupimet e kerkuara ne te njejtin rresht
+// Pa zvogelim automatik te shkronjave
 
 const cfg = window.BESA_CONFIG;
 
-const supa = cfg?.url && cfg?.anonKey && window.supabase
-  ? window.supabase.createClient(cfg.url, cfg.anonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true
-      }
-    })
-  : null;
+const supa =
+  cfg?.url && cfg?.anonKey && window.supabase
+    ? window.supabase.createClient(cfg.url, cfg.anonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      })
+    : null;
 
 const gate = document.querySelector('#loginGate');
 const appView = document.querySelector('#appView');
@@ -61,6 +65,7 @@ const labels = {
   adresa: 'Adresa',
   vendbanimi: 'Vendbanimi',
   telefoni: 'Nr. i telefonit',
+  pergatitja_shkollore: 'Pergatitja shkollore',
   drejtimi: 'Drejtimi i shkollimit',
   trajnime: 'Trajnimet profesionale',
   pershkrim_trajnimeve: 'Pershkrimi i trajnimeve',
@@ -69,40 +74,10 @@ const labels = {
   gjatesia: 'Gjatesia (cm)',
   pesha: 'Pesha (kg)',
   perkatesia_etnike: 'Perkatesia etnike',
-  pergatitja_shkollore: 'Pergatitja shkollore',
   kontakti_familjar: 'Kontakti familjar',
   lidhja_familjare: 'Lidhja familjare',
   telefoni_familjar: 'Telefoni familjar'
 };
-
-const ordered = [
-  'emri',
-  'mbiemri',
-  'emri_babait',
-  'gjinia',
-  'data_lindjes',
-  'vendi_lindjes',
-  'email',
-  'statusi_martesor',
-  'numri_leternjoftimit',
-  'xhirollogaria',
-  'emri_bankes',
-  'adresa',
-  'vendbanimi',
-  'telefoni',
-  'pergatitja_shkollore',
-  'drejtimi',
-  'trajnime',
-  'pershkrim_trajnimeve',
-  'patente',
-  'denuar',
-  'gjatesia',
-  'pesha',
-  'perkatesia_etnike',
-  'kontakti_familjar',
-  'lidhja_familjare',
-  'telefoni_familjar'
-];
 
 const bankNames = {
   RBKO: 'Raiffeisen Bank Kosovo',
@@ -117,20 +92,20 @@ const bankNames = {
   PRIBANK: 'PriBank'
 };
 
-function formatNumber(value) {
-  return value == null
-    ? 'Pa numer'
-    : String(value).padStart(4, '0');
-}
-
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-  }[char]));
+  }[c]));
+}
+
+function formatNumber(value) {
+  return value == null
+    ? 'Pa numer'
+    : String(value).padStart(4, '0');
 }
 
 function patentValue(data) {
@@ -141,18 +116,14 @@ function patentValue(data) {
       ? raw
       : String(raw || '').split(',')
   )
-    .map(item => String(item).trim())
+    .map(x => String(x).trim())
     .filter(Boolean);
 
-  const explicit = String(data.patente || '')
+  const answer = String(data.patente || '')
     .trim()
     .toLowerCase();
 
-  if (
-    explicit === 'jo' ||
-    explicit === 'nuk ka' ||
-    explicit === 'false'
-  ) {
+  if (answer === 'jo' || answer === 'false') {
     return 'JO';
   }
 
@@ -164,18 +135,11 @@ function patentValue(data) {
       categories.join(', ');
   }
 
-  if (
-    explicit === 'po' ||
-    explicit === 'true'
-  ) {
+  if (answer === 'po' || answer === 'true') {
     return 'PO';
   }
 
-  if (explicit && explicit !== '—') {
-    return data.patente;
-  }
-
-  return 'JO';
+  return data.patente || 'JO';
 }
 
 function displayValue(key, data) {
@@ -187,7 +151,7 @@ function displayValue(key, data) {
 
   if (key === 'emri_bankes') {
     if (value === 'Tjeter' || value === 'Tjetër') {
-      value = data.emri_bankes_tjeter || 'Tjeter';
+      value = data.emri_bankes_tjeter || value;
     } else {
       value = bankNames[value] || value;
     }
@@ -207,9 +171,9 @@ function displayValue(key, data) {
   return String(value ?? '').trim() || '—';
 }
 
-// ==========================================
-// AUTENTIKIMI
-// ==========================================
+// =====================================
+// LOGIN DHE AUTORIZIMI
+// =====================================
 
 async function refresh() {
   if (gate) gate.hidden = false;
@@ -225,24 +189,24 @@ async function refresh() {
     return;
   }
 
-  const { data: userData, error } = await supa.auth.getUser();
-  const user = userData?.user;
+  const { data, error } = await supa.auth.getUser();
+  const user = data?.user;
 
   if (error || !user) {
     if (authStatus) authStatus.textContent = '';
     return;
   }
 
-  const result = await supa
+  const roleResult = await supa
     .from('account_roles')
     .select('role')
     .eq('user_id', user.id)
     .single();
 
-  const role = result.data?.role;
+  const role = roleResult.data?.role;
 
   if (
-    result.error ||
+    roleResult.error ||
     !['aplikant', 'hr'].includes(role)
   ) {
     if (authStatus) {
@@ -276,8 +240,10 @@ document.querySelector('#loginForm')
     event.preventDefault();
 
     if (!supa) {
-      authStatus.textContent =
-        'Supabase nuk eshte konfiguruar.';
+      if (authStatus) {
+        authStatus.textContent =
+          'Supabase nuk eshte konfiguruar.';
+      }
       return;
     }
 
@@ -292,7 +258,9 @@ document.querySelector('#loginForm')
       'aplikant3',
       'admin'
     ].includes(username)) {
-      authStatus.textContent = 'Username i pavlefshem.';
+      if (authStatus) {
+        authStatus.textContent = 'Username i pavlefshem.';
+      }
       return;
     }
 
@@ -302,8 +270,10 @@ document.querySelector('#loginForm')
     });
 
     if (error) {
-      authStatus.textContent =
-        'Kyçja deshtoi. Kontrollo kredencialet.';
+      if (authStatus) {
+        authStatus.textContent =
+          'Kyçja deshtoi. Kontrollo kredencialet.';
+      }
       return;
     }
 
@@ -317,9 +287,9 @@ document.querySelectorAll('.logout').forEach(button => {
   });
 });
 
-// ==========================================
-// RUAJTJA E APLIKIMIT
-// ==========================================
+// =====================================
+// DERGIMI I APLIKIMIT
+// =====================================
 
 async function submitApplication(form) {
   if (!supa || currentRole !== 'aplikant') {
@@ -394,10 +364,7 @@ async function submitApplication(form) {
 
     const { data, error } = await supa
       .from('applications')
-      .insert({
-        id,
-        data: payload
-      })
+      .insert({ id, data: payload })
       .select('application_number')
       .single();
 
@@ -432,9 +399,9 @@ async function submitApplication(form) {
 
 window.besaSubmit = submitApplication;
 
-// ==========================================
+// =====================================
 // HR DASHBOARD
-// ==========================================
+// =====================================
 
 async function loadHR() {
   const root = document.querySelector('#hrList');
@@ -472,7 +439,6 @@ async function loadHR() {
     card.className = 'hr-card';
 
     const title = document.createElement('h3');
-
     title.textContent =
       'Nr. ' + formatNumber(record.application_number) +
       ' · ' +
@@ -493,16 +459,15 @@ async function loadHR() {
     card.append(meta);
 
     const printButton = document.createElement('button');
-
     printButton.type = 'button';
     printButton.textContent = 'Shiko / Printo A4';
-    printButton.onclick = () => printApplication(record);
 
+    printButton.onclick = () => printApplication(record);
     card.append(printButton);
 
     const select = document.createElement('select');
 
-    for (const value of [
+    for (const status of [
       'I ri',
       'Ne shqyrtim',
       'Interviste',
@@ -510,8 +475,8 @@ async function loadHR() {
       'Refuzuar'
     ]) {
       const option = document.createElement('option');
-      option.value = value;
-      option.textContent = value;
+      option.value = status;
+      option.textContent = status;
       select.append(option);
     }
 
@@ -540,7 +505,6 @@ async function loadHR() {
       if (!d[field]) continue;
 
       const button = document.createElement('button');
-
       button.type = 'button';
       button.textContent = 'Hap ' + documentLabels[field];
 
@@ -570,12 +534,13 @@ async function loadHR() {
 document.querySelector('#refreshHR')
   ?.addEventListener('click', loadHR);
 
-// ==========================================
-// PRINTIMI A4 - NJE FAQE
-// ==========================================
+// =====================================
+// RAPORTI A4 - VERSIONI I RI
+// =====================================
 
 function printApplication(record) {
   const d = record.data || {};
+
   const win = window.open('', '_blank');
 
   if (!win) {
@@ -593,19 +558,9 @@ function printApplication(record) {
     window.location.href
   ).href;
 
-  // Fushat e fshehura ne formular nuk shfaqen ne raport.
-  const visibleKeys = ordered.filter(key => {
-    if (key === 'pershkrim_trajnimeve') {
-      return String(d.trajnime || '').toLowerCase() === 'po';
-    }
-    if (key === 'drejtimi') {
-      return d.pergatitja_shkollore !== 'Fillore' &&
-        String(d.pergatitja_shkollore || '').trim() !== '';
-    }
-    return true;
-  });
+  // Vetem keto fusha grupohen.
+  // Cdo fushe tjeter ka rresht te vecante.
 
-  // Nje rresht per secilen fushe; vetem grupet e kerkuara bashke.
   const groups = [
     ['emri', 'emri_babait', 'mbiemri'],
     ['gjinia'],
@@ -629,86 +584,382 @@ function printApplication(record) {
     ['telefoni_familjar']
   ];
 
-  let fieldNumber = 0;
+  function visible(key) {
+    if (key === 'drejtimi') {
+      return String(d.pergatitja_shkollore || '')
+        .trim().toLowerCase() !== 'fillore' &&
+        !!String(d.pergatitja_shkollore || '').trim();
+    }
+
+    if (key === 'pershkrim_trajnimeve') {
+      return String(d.trajnime || '')
+        .trim().toLowerCase() === 'po';
+    }
+
+    return true;
+  }
+
+  let counter = 0;
+
   const rows = groups.map(group => {
-    const keys = group.filter(key => visibleKeys.includes(key));
+    const keys = group.filter(visible);
+
     if (!keys.length) return '';
-    const cells = keys.map(key => `
-      <div class="field">
-        <span class="field-label">${++fieldNumber}. ${esc(labels[key])}:</span>
-        <span class="field-value">${esc(displayValue(key, d))}</span>
+
+    const cells = keys.map(key => {
+      counter++;
+
+      return `
+        <div class="field">
+          <span class="field-label">
+            ${counter}. ${esc(labels[key])}:
+          </span>
+          <span class="field-value">
+            ${esc(displayValue(key, d))}
+          </span>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="field-row cols-${keys.length}">
+        ${cells}
       </div>
-    `).join('');
-    return `<div class="field-row cols-${keys.length}">${cells}</div>`;
+    `;
   }).join('');
 
-  const docs = allDocumentFields
+  const documents = allDocumentFields
     .filter(key => d[key])
     .map(key => `
-      <span class="doc">
+      <span class="document">
         &#10003; ${esc(documentLabels[key])}
       </span>
-    `).join('');
+    `)
+    .join('');
 
   const css = `
-    @page { size: A4 portrait; margin: 0; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #18324a; background: #e8edf2; }
-    .toolbar { padding: 12px; text-align: center; background: #173650; }
-    .toolbar button { padding: 10px 18px; margin: 0 5px; border: 0; border-radius: 4px; cursor: pointer; }
-    .sheet { width: 210mm; height: 297mm; margin: 12px auto; padding: 6mm 8mm; background: white; overflow: hidden; box-shadow: 0 3px 14px #0002; position: relative; }
-    .content { width: 100%; transform-origin: top left; }
-    .heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding-bottom: 5px; border-bottom: 2px solid #b52733; }
-    .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .logo { width: 76px; max-height: 55px; object-fit: contain; }
-    .company { font-size: 15px; font-weight: 800; }
-    h1 { margin: 3px 0; font-size: 18px; line-height: 1.1; }
-    .subtitle { font-size: 12px; color: #607183; }
-    .iso-block { flex: 0 0 168px; text-align: right; font-size: 11px; line-height: 1.25; }
-    .iso-version { font-size: 10px; margin-top: 2px; }
-    .employment-fields { margin-top: 5px; text-align: left; font-size: 11px; }
-    .employment-row { margin-top: 4px; }
-    .employment-label { display: block; font-weight: bold; margin-bottom: 2px; }
-    .employment-line { height: 7px; border-bottom: 1px solid #6f8193; }
-    .meta { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; gap: 8px; margin: 5px 0; padding: 6px 8px; background: #eef2f6; font-size: 13px; }
-    .meta-left { display: flex; flex-direction: column; gap: 3px; }
-    .meta-right { min-width: 0; padding: 5px 8px; text-align: center; border-left: 2px solid #b52733; }
-    .position-label { font-size: 12px; font-weight: bold; color: #526477; }
-    .position-value { margin-top: 4px; font-size: 21px; font-weight: 800; color: #173650; overflow-wrap: anywhere; }
-    .section-title { margin: 6px 0 4px; padding: 5px 7px; font-size: 16px; background: #edf2f6; border-left: 3px solid #b52733; }
-    .fields-grid { display: flex; flex-direction: column; gap: 0; }
-    .field-row { display: grid; grid-template-columns: minmax(0,1fr); border-bottom: 1px solid #dfe5eb; min-height: 29px; align-items: center; break-inside: avoid; }
-    .field-row.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .field-row.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
-    .field { display: flex; align-items: baseline; gap: 7px; min-width: 0; padding: 4px 6px; }
-    .field-label { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; color: #43566a; line-height: 1.2; }
-    .field-value { flex: 1 1 auto; font-size: 15px; font-weight: 700; color: #18324a; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.2; }
-    .field-row.cols-3 .field { gap: 4px; padding-left: 3px; padding-right: 3px; }
-    .field-row.cols-3 .field-label { font-size: 11.5px; }
-    .documents { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px; font-size: 12px; }
-    .footer { display: flex; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid #dce3e9; font-size: 12px; color: #526477; }
-    .sheet.compact-1 .field-row { min-height: 26px; }
-    .sheet.compact-1 .field { padding-top: 2px; padding-bottom: 2px; }
-    .sheet.compact-1 .section-title { margin-top: 3px; margin-bottom: 2px; padding-top: 3px; padding-bottom: 3px; }
-    .sheet.compact-2 .field-row { min-height: 24px; }
-    .sheet.compact-2 .field { padding-top: 1px; padding-bottom: 1px; }
-    .sheet.compact-2 .meta { padding-top: 3px; padding-bottom: 3px; }
-    .sheet.compact-3 .field-row { min-height: 22px; }
-    .sheet.compact-3 .heading { padding-bottom: 2px; }
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #173650;
+      background: #e8edf2;
+    }
+
+    .toolbar {
+      padding: 12px;
+      background: #173650;
+      text-align: center;
+    }
+
+    .toolbar button {
+      padding: 10px 18px;
+      margin: 0 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 12px auto;
+      padding: 6mm 8mm;
+      background: #fff;
+      box-shadow: 0 3px 14px #0002;
+    }
+
+    .heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #b52733;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 76px;
+      max-height: 55px;
+      object-fit: contain;
+    }
+
+    .company {
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 3px 0;
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #607183;
+    }
+
+    .iso-block {
+      flex: 0 0 168px;
+      font-size: 11px;
+      line-height: 1.25;
+      text-align: right;
+    }
+
+    .iso-version {
+      margin-top: 2px;
+      font-size: 10px;
+    }
+
+    .employment-fields {
+      margin-top: 5px;
+      text-align: left;
+    }
+
+    .employment-row {
+      margin-top: 4px;
+    }
+
+    .employment-label {
+      display: block;
+      font-weight: bold;
+    }
+
+    .employment-line {
+      height: 8px;
+      border-bottom: 1px solid #708396;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0;
+      padding: 7px 8px;
+      background: #edf2f6;
+      font-size: 13px;
+    }
+
+    .meta-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .meta-right {
+      padding: 5px 8px;
+      text-align: center;
+      border-left: 2px solid #b52733;
+    }
+
+    .position-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: #526477;
+    }
+
+    .position-value {
+      margin-top: 4px;
+      font-size: 21px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .section-title {
+      margin: 7px 0 4px;
+      padding: 5px 7px;
+      background: #edf2f6;
+      border-left: 3px solid #b52733;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    /* STRUKTURA E RE E RRESHTAVE */
+
+    .fields-grid {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: center;
+      min-height: 27px;
+      border-bottom: 1px solid #dfe5eb;
+      break-inside: avoid;
+    }
+
+    .field-row.cols-2 {
+      grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+    }
+
+    .field-row.cols-3 {
+      grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      flex-wrap: nowrap;
+      gap: 5px;
+      min-width: 0;
+      padding: 4px 5px;
+    }
+
+    .field-label {
+      flex: 0 0 auto;
+      font-size: 12.5px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: #43566a;
+      white-space: nowrap;
+    }
+
+    .field-value {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: #173650;
+      overflow-wrap: anywhere;
+    }
+
+    .cols-3 .field {
+      gap: 3px;
+      padding-left: 2px;
+      padding-right: 2px;
+    }
+
+    .cols-3 .field-label {
+      font-size: 12.5px;
+    }
+
+    .documents {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px 12px;
+      padding: 6px 4px;
+      font-size: 12px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid #dce3e9;
+      font-size: 12px;
+      color: #526477;
+    }
+
+    /* Vetem hapesirat zvogelohen nese duhet */
+
+    .sheet.compact .field-row {
+      min-height: 24px;
+    }
+
+    .sheet.compact .field {
+      padding-top: 2px;
+      padding-bottom: 2px;
+    }
+
+    .sheet.compact .section-title {
+      margin-top: 4px;
+      margin-bottom: 2px;
+      padding-top: 3px;
+      padding-bottom: 3px;
+    }
+
+    .sheet.compact .meta {
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+
+    .overflow-warning {
+      display: none;
+      padding: 8px;
+      margin: 10px auto;
+      width: 210mm;
+      background: #fff3d6;
+      color: #744900;
+      font-size: 13px;
+    }
+
+    .overflow-warning.visible {
+      display: block;
+    }
+
     @media print {
-      html, body { width: 210mm; height: 297mm; overflow: hidden !important; background: white; }
-      .toolbar { display: none !important; }
-      .sheet { width: 210mm; height: 297mm; margin: 0 !important; padding: 6mm 8mm; box-shadow: none; overflow: hidden !important; break-after: avoid; page-break-after: avoid; }
-      .meta, .section-title { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: white;
+      }
+
+      .toolbar,
+      .overflow-warning {
+        display: none !important;
+      }
+
+      .sheet {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0;
+        padding: 6mm 8mm;
+        box-shadow: none;
+      }
+
+      .meta,
+      .section-title {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .field-row {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
     }
   `;
+
+  win.document.open();
 
   win.document.write(`
     <!doctype html>
     <html lang="sq">
     <head>
       <meta charset="UTF-8">
-      <title>Aplikimi ${esc(number)} - Besa Security</title>
+      <title>
+        Besa Security - Aplikimi ${esc(number)} - v2.3
+      </title>
       <style>${css}</style>
     </head>
 
@@ -717,130 +968,151 @@ function printApplication(record) {
         <button onclick="prepareAndPrint()">
           Printo / Ruaj PDF
         </button>
+
         <button onclick="window.close()">
           Mbyll
         </button>
       </div>
 
+      <div class="overflow-warning" id="overflowWarning">
+        Raporti ka permbajtje me te gjate se nje faqe A4.
+        Kontrollo Print Preview para printimit.
+      </div>
+
       <main class="sheet" id="sheet">
-        <div class="content" id="content">
 
-          <header class="heading">
-            <div class="brand">
-              <img class="logo"
-                   src="${esc(logo)}"
-                   alt="Besa Security">
+        <header class="heading">
+          <div class="brand">
+            <img
+              class="logo"
+              src="${esc(logo)}"
+              alt="Besa Security"
+            >
 
-              <div>
-                <div class="company">BESA SECURITY</div>
-                <h1>FORMULARI I APLIKIMIT PER PUNE</h1>
-                <div class="subtitle">
-                  Departamenti i Burimeve Njerezore
-                </div>
+            <div>
+              <div class="company">
+                BESA SECURITY
               </div>
-            </div>
 
-            <div class="iso-block">
-              <strong>
-                ISO9001:2015 &amp; ISO14001:2015
-              </strong>
-              <div class="iso-version">v.1.1</div>
+              <h1>
+                FORMULARI I APLIKIMIT PER PUNE
+              </h1>
 
-              <div class="employment-fields">
-                <div class="employment-row">
-                  <span class="employment-label">
-                    Data e fillimit te punes
-                  </span>
-                  <div class="employment-line"></div>
-                </div>
-
-                <div class="employment-row">
-                  <span class="employment-label">
-                    Vendi i punes
-                  </span>
-                  <div class="employment-line"></div>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <div class="meta">
-            <div class="meta-left">
-              <div>
-                <b>Nr. aplikimit:</b> ${esc(number)}
-              </div>
-              <div>
-                <b>Data:</b> ${esc(date)}
-              </div>
-              <div>
-                <b>Statusi:</b>
-                ${esc(record.status || 'I ri')}
-              </div>
-            </div>
-
-            <div class="meta-right">
-              <div class="position-label">
-                POZITA E APLIKUAR
-              </div>
-              <div class="position-value">
-                ${esc(d.pozita || '—')}
+              <div class="subtitle">
+                Departamenti i Burimeve Njerezore
               </div>
             </div>
           </div>
 
-          <h2 class="section-title">
-            TE DHENAT E APLIKANTIT
-          </h2>
+          <div class="iso-block">
+            <strong>
+              ISO9001:2015 &amp; ISO14001:2015
+            </strong>
 
-          <div class="fields-grid">${rows}</div>
+            <div class="iso-version">
+              v.1.1
+            </div>
 
-          <h2 class="section-title">
-            DOKUMENTET E BASHKENGJITURA
-          </h2>
+            <div class="employment-fields">
+              <div class="employment-row">
+                <span class="employment-label">
+                  Data e fillimit te punes
+                </span>
+                <div class="employment-line"></div>
+              </div>
 
-          <div class="documents">
-            ${docs || 'Nuk ka dokumente'}
+              <div class="employment-row">
+                <span class="employment-label">
+                  Vendi i punes
+                </span>
+                <div class="employment-line"></div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="meta">
+          <div class="meta-left">
+            <div>
+              <b>Nr. aplikimit:</b>
+              ${esc(number)}
+            </div>
+
+            <div>
+              <b>Data:</b>
+              ${esc(date)}
+            </div>
+
+            <div>
+              <b>Statusi:</b>
+              ${esc(record.status || 'I ri')}
+            </div>
           </div>
 
-          <div class="footer">
-            <span>
-              BESA SECURITY · Your safety, our promise.
-            </span>
-            <span>Nr. ${esc(number)}</span>
-          </div>
+          <div class="meta-right">
+            <div class="position-label">
+              POZITA E APLIKUAR
+            </div>
 
+            <div class="position-value">
+              ${esc(d.pozita || '—')}
+            </div>
+          </div>
         </div>
+
+        <h2 class="section-title">
+          TE DHENAT E APLIKANTIT
+        </h2>
+
+        <div class="fields-grid">
+          ${rows}
+        </div>
+
+        <h2 class="section-title">
+          DOKUMENTET E BASHKENGJITURA
+        </h2>
+
+        <div class="documents">
+          ${documents || 'Nuk ka dokumente'}
+        </div>
+
+        <footer class="footer">
+          <span>
+            BESA SECURITY · Your safety, our promise.
+          </span>
+
+          <span>
+            Nr. ${esc(number)}
+          </span>
+        </footer>
+
       </main>
 
       <script>
         function fitToA4() {
           const sheet = document.getElementById('sheet');
-          const content = document.getElementById('content');
-          if (!sheet || !content) return;
+          const warning =
+            document.getElementById('overflowWarning');
 
-          sheet.classList.remove('compact-1', 'compact-2', 'compact-3');
-          content.style.transform = 'none';
-          content.style.width = '100%';
+          if (!sheet) return;
 
-          const style = getComputedStyle(sheet);
-          const availableWidth = sheet.clientWidth -
-            parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2;
-          const availableHeight = sheet.clientHeight -
-            parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 2;
+          sheet.classList.remove('compact');
 
-          // Fillimisht zvogelohen hapesirat, jo shkronjat.
-          for (const level of ['compact-1', 'compact-2', 'compact-3']) {
-            if (content.scrollHeight <= availableHeight &&
-                content.scrollWidth <= availableWidth) break;
-            sheet.classList.add(level);
+          const maxHeight = 297 * 96 / 25.4;
+          const contentHeight = sheet.scrollHeight;
+
+          if (contentHeight > maxHeight) {
+            sheet.classList.add('compact');
           }
 
-          // Madhesia e shkronjave nuk zvogelohet.
-          // Per tekst te pazakonshem te gjate njofto HR para printimit.
-          if (content.scrollHeight > availableHeight ||
-              content.scrollWidth > availableWidth) {
-            document.title = 'KUJDES: Raporti ka tekst te gjate - ' +
-              document.title.replace(/^KUJDES: Raporti ka tekst te gjate - /, '');
+          const stillOverflow =
+            sheet.scrollHeight > maxHeight + 2;
+
+          if (warning) {
+            warning.classList.toggle(
+              'visible',
+              stillOverflow
+            );
           }
         }
 
@@ -851,13 +1123,11 @@ function printApplication(record) {
 
         window.addEventListener('load', fitToA4);
         window.addEventListener('beforeprint', fitToA4);
-        window.addEventListener('resize', fitToA4);
 
         if (document.fonts) {
           document.fonts.ready.then(fitToA4);
         }
       <\/script>
-
     </body>
     </html>
   `);
@@ -865,8 +1135,10 @@ function printApplication(record) {
   win.document.close();
 }
 
-// ==========================================
+// =====================================
 // START
-// ==========================================
+// =====================================
+
+console.info('BESA SECURITY auth.js v2.3 loaded');
 
 refresh();
