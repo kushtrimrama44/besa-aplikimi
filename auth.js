@@ -2,7 +2,7 @@
 'use strict';
 
 // BESA SECURITY - Aplikim per Pune
-// auth.js v1.7 - Raport kompakt, nje faqe A4
+// auth.js v1.9
 
 const cfg = window.BESA_CONFIG;
 
@@ -53,6 +53,8 @@ const labels = {
   gjinia: 'Gjinia',
   data_lindjes: 'Data e lindjes',
   vendi_lindjes: 'Vendi i lindjes',
+  email: 'Email',
+  statusi_martesor: 'Statusi martesor',
   numri_leternjoftimit: 'Nr. i leternjoftimit',
   xhirollogaria: 'Xhirollogaria bankare',
   emri_bankes: 'Emri i bankes',
@@ -62,7 +64,7 @@ const labels = {
   drejtimi: 'Drejtimi i shkollimit',
   trajnime: 'Trajnimet profesionale',
   pershkrim_trajnimeve: 'Pershkrimi i trajnimeve',
-  kategorite: 'Kategorite e patentes',
+  patente: 'Patenta e shoferit',
   denuar: 'I denuar',
   gjatesia: 'Gjatesia (cm)',
   pesha: 'Pesha (kg)',
@@ -70,10 +72,7 @@ const labels = {
   pergatitja_shkollore: 'Pergatitja shkollore',
   kontakti_familjar: 'Kontakti familjar',
   lidhja_familjare: 'Lidhja familjare',
-  telefoni_familjar: 'Telefoni familjar',
-  patente: 'Patenta e shoferit',
-  statusi_ligjor: 'Statusi ligjor',
-  arsyeja_statusit: 'Arsyeja / sqarimi'
+  telefoni_familjar: 'Telefoni familjar'
 };
 
 const ordered = [
@@ -83,6 +82,8 @@ const ordered = [
   'gjinia',
   'data_lindjes',
   'vendi_lindjes',
+  'email',
+  'statusi_martesor',
   'numri_leternjoftimit',
   'xhirollogaria',
   'emri_bankes',
@@ -92,7 +93,7 @@ const ordered = [
   'drejtimi',
   'trajnime',
   'pershkrim_trajnimeve',
-  'kategorite',
+  'patente',
   'denuar',
   'gjatesia',
   'pesha',
@@ -116,21 +117,72 @@ const bankNames = {
   PRIBANK: 'PriBank'
 };
 
-function formatNumber(n) {
-  return n == null ? 'Pa numer' : String(n).padStart(4, '0');
+function formatNumber(value) {
+  return value == null
+    ? 'Pa numer'
+    : String(value).padStart(4, '0');
 }
 
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, c => ({
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-  }[c]));
+  }[char]));
+}
+
+function patentValue(data) {
+  const raw = data.kategorite;
+
+  const categories = (
+    Array.isArray(raw)
+      ? raw
+      : String(raw || '').split(',')
+  )
+    .map(item => String(item).trim())
+    .filter(Boolean);
+
+  const explicit = String(data.patente || '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    explicit === 'jo' ||
+    explicit === 'nuk ka' ||
+    explicit === 'false'
+  ) {
+    return 'JO';
+  }
+
+  if (categories.length) {
+    return 'PO - ' +
+      (categories.length === 1
+        ? 'Kategoria '
+        : 'Kategorite ') +
+      categories.join(', ');
+  }
+
+  if (
+    explicit === 'po' ||
+    explicit === 'true'
+  ) {
+    return 'PO';
+  }
+
+  if (explicit && explicit !== '—') {
+    return data.patente;
+  }
+
+  return 'JO';
 }
 
 function displayValue(key, data) {
+  if (key === 'patente') {
+    return patentValue(data);
+  }
+
   let value = data[key];
 
   if (key === 'emri_bankes') {
@@ -155,18 +207,21 @@ function displayValue(key, data) {
   return String(value ?? '').trim() || '—';
 }
 
-// --------------------------------------------
-// LOGIN
-// --------------------------------------------
+// ==========================================
+// AUTENTIKIMI
+// ==========================================
 
 async function refresh() {
-  gate.hidden = false;
-  appView.hidden = true;
-  hrView.hidden = true;
+  if (gate) gate.hidden = false;
+  if (appView) appView.hidden = true;
+  if (hrView) hrView.hidden = true;
+
   currentRole = null;
 
   if (!supa) {
-    authStatus.textContent = 'Kontrollo config.js.';
+    if (authStatus) {
+      authStatus.textContent = 'Kontrollo config.js.';
+    }
     return;
   }
 
@@ -174,7 +229,7 @@ async function refresh() {
   const user = userData?.user;
 
   if (error || !user) {
-    authStatus.textContent = '';
+    if (authStatus) authStatus.textContent = '';
     return;
   }
 
@@ -186,33 +241,43 @@ async function refresh() {
 
   const role = result.data?.role;
 
-  if (result.error || !['aplikant', 'hr'].includes(role)) {
-    await supa.auth.signOut();
-    authStatus.textContent = 'Llogaria nuk eshte e autorizuar.';
+  if (
+    result.error ||
+    !['aplikant', 'hr'].includes(role)
+  ) {
+    if (authStatus) {
+      authStatus.textContent =
+        'Llogaria nuk ka rol te autorizuar.';
+    }
     return;
   }
 
   currentRole = role;
-  gate.hidden = true;
+
+  if (gate) gate.hidden = true;
 
   if (role === 'hr') {
-    hrView.hidden = false;
+    if (hrView) hrView.hidden = false;
     await loadHR();
   } else {
-    appView.hidden = false;
+    if (appView) appView.hidden = false;
+
     const form = document.querySelector('#application');
-    form.reset();
-    form.dispatchEvent(new Event('change'));
+
+    if (form) {
+      form.reset();
+      form.dispatchEvent(new Event('change'));
+    }
   }
 }
 
-document.querySelector('#loginForm').addEventListener(
-  'submit',
-  async event => {
+document.querySelector('#loginForm')
+  ?.addEventListener('submit', async event => {
     event.preventDefault();
 
     if (!supa) {
-      authStatus.textContent = 'Supabase nuk eshte konfiguruar.';
+      authStatus.textContent =
+        'Supabase nuk eshte konfiguruar.';
       return;
     }
 
@@ -237,13 +302,13 @@ document.querySelector('#loginForm').addEventListener(
     });
 
     if (error) {
-      authStatus.textContent = 'Kyçja deshtoi.';
+      authStatus.textContent =
+        'Kyçja deshtoi. Kontrollo kredencialet.';
       return;
     }
 
     await refresh();
-  }
-);
+  });
 
 document.querySelectorAll('.logout').forEach(button => {
   button.addEventListener('click', async () => {
@@ -252,9 +317,9 @@ document.querySelectorAll('.logout').forEach(button => {
   });
 });
 
-// --------------------------------------------
+// ==========================================
 // RUAJTJA E APLIKIMIT
-// --------------------------------------------
+// ==========================================
 
 async function submitApplication(form) {
   if (!supa || currentRole !== 'aplikant') {
@@ -317,7 +382,11 @@ async function submitApplication(form) {
           upsert: false
         });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        throw new Error(
+          'Ngarkimi deshtoi: ' + error.message
+        );
+      }
 
       uploaded.push(path);
       payload[name] = path;
@@ -325,11 +394,18 @@ async function submitApplication(form) {
 
     const { data, error } = await supa
       .from('applications')
-      .insert({ id, data: payload })
+      .insert({
+        id,
+        data: payload
+      })
       .select('application_number')
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(
+        'Ruajtja deshtoi: ' + error.message
+      );
+    }
 
     form.reset();
     form.dispatchEvent(new Event('change'));
@@ -356,12 +432,13 @@ async function submitApplication(form) {
 
 window.besaSubmit = submitApplication;
 
-// --------------------------------------------
-// DASHBOARD HR
-// --------------------------------------------
+// ==========================================
+// HR DASHBOARD
+// ==========================================
 
 async function loadHR() {
   const root = document.querySelector('#hrList');
+  if (!root) return;
 
   root.textContent = 'Duke ngarkuar...';
 
@@ -433,7 +510,6 @@ async function loadHR() {
       'Refuzuar'
     ]) {
       const option = document.createElement('option');
-
       option.value = value;
       option.textContent = value;
       select.append(option);
@@ -492,11 +568,11 @@ async function loadHR() {
 }
 
 document.querySelector('#refreshHR')
-  .addEventListener('click', loadHR);
+  ?.addEventListener('click', loadHR);
 
-// --------------------------------------------
-// PRINTIMI A4
-// --------------------------------------------
+// ==========================================
+// PRINTIMI A4 - NJE FAQE
+// ==========================================
 
 function printApplication(record) {
   const d = record.data || {};
@@ -517,31 +593,10 @@ function printApplication(record) {
     window.location.href
   ).href;
 
-  const rows = ordered.map((key, i) => `
+  const rows = ordered.map((key, index) => `
     <div class="field">
       <span class="field-label">
-        ${i + 1}. ${esc(labels[key])}
-      </span>
-      <span class="field-value">
-        ${esc(displayValue(key, d))}
-      </span>
-    </div>
-  `).join('');
-
-  // Pozita nuk futet te te dhenat shtese.
-  const extraKeys = [
-    'patente',
-    'statusi_ligjor',
-    'arsyeja_statusit'
-  ].filter(key => {
-    const value = d[key];
-    return value != null && String(value).trim() !== '';
-  });
-
-  const extra = extraKeys.map(key => `
-    <div class="field">
-      <span class="field-label">
-        ${esc(labels[key])}
+        ${index + 1}. ${esc(labels[key])}
       </span>
       <span class="field-value">
         ${esc(displayValue(key, d))}
@@ -570,33 +625,34 @@ function printApplication(record) {
     html, body {
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
       color: #18324a;
       background: #e8edf2;
     }
 
     .toolbar {
+      padding: 12px;
       text-align: center;
       background: #173650;
-      padding: 12px;
     }
 
     .toolbar button {
       padding: 10px 18px;
       margin: 0 5px;
-      cursor: pointer;
       border: 0;
       border-radius: 4px;
+      cursor: pointer;
     }
 
     .sheet {
       width: 209mm;
       height: 296mm;
       margin: 12px auto;
-      padding: 8mm 9mm;
+      padding: 7mm 9mm;
       background: white;
       overflow: hidden;
       box-shadow: 0 3px 14px #0002;
+      position: relative;
     }
 
     .content {
@@ -606,11 +662,11 @@ function printApplication(record) {
 
     .heading {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 8px;
+      gap: 10px;
+      padding-bottom: 7px;
       border-bottom: 2px solid #b52733;
-      padding-bottom: 6px;
     }
 
     .brand {
@@ -621,96 +677,123 @@ function printApplication(record) {
     }
 
     .logo {
-      width: 78px;
-      max-height: 55px;
+      width: 80px;
+      max-height: 60px;
       object-fit: contain;
     }
 
     .company {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
     }
 
     h1 {
-      font-size: 13px;
       margin: 3px 0;
+      font-size: 14px;
       line-height: 1.15;
     }
 
     .subtitle {
-      font-size: 8px;
+      font-size: 9px;
       color: #607183;
     }
 
-    .iso {
-      font-size: 8px;
+    .iso-block {
+      flex: 0 0 170px;
       text-align: right;
-      white-space: nowrap;
-      align-self: flex-start;
+      font-size: 9px;
+      line-height: 1.35;
+    }
+
+    .iso-version {
+      font-size: 8px;
+      margin-top: 2px;
+    }
+
+    .employment-fields {
+      margin-top: 12px;
+      text-align: left;
+      font-size: 9px;
+    }
+
+    .employment-row {
+      margin-top: 9px;
+    }
+
+    .employment-label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+
+    .employment-line {
+      height: 12px;
+      border-bottom: 1px solid #6f8193;
     }
 
     .meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
       align-items: center;
-      gap: 8px;
-      margin: 7px 0;
-      padding: 8px 10px;
+      gap: 10px;
+      margin: 8px 0;
+      padding: 9px 10px;
       background: #eef2f6;
-      font-size: 9px;
+      font-size: 10px;
     }
 
     .meta-left {
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 4px;
     }
 
     .meta-right {
-      border-left: 2px solid #b52733;
-      text-align: center;
-      padding: 6px 8px;
       min-width: 0;
+      padding: 7px 10px;
+      text-align: center;
+      border-left: 2px solid #b52733;
     }
 
     .position-label {
-      font-size: 9px;
+      font-size: 10px;
       font-weight: bold;
       color: #526477;
-      letter-spacing: .4px;
+      letter-spacing: .3px;
     }
 
     .position-value {
       margin-top: 5px;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 800;
       color: #173650;
       overflow-wrap: anywhere;
     }
 
     .section-title {
-      font-size: 10px;
       margin: 7px 0 3px;
-      padding: 4px 6px;
+      padding: 5px 7px;
+      font-size: 11px;
       background: #edf2f6;
       border-left: 3px solid #b52733;
     }
 
     .field {
       display: grid;
-      grid-template-columns: 44% minmax(0, 56%);
-      align-items: center;
-      gap: 4px;
-      min-height: 19px;
-      padding: 2px 5px;
+      grid-template-columns: 43% minmax(0,57%);
+      align-items: start;
+      min-height: 21px;
+      padding: 4px 5px;
       border-bottom: 1px solid #dfe5eb;
-      font-size: 9px;
-      line-height: 1.2;
+      font-size: 10.5px;
+      line-height: 1.25;
+      break-inside: avoid;
     }
 
     .field-label {
       font-weight: bold;
       color: #43566a;
+      padding-right: 8px;
     }
 
     .field-value {
@@ -722,18 +805,18 @@ function printApplication(record) {
     .documents {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px 12px;
-      padding: 4px;
-      font-size: 8px;
+      gap: 5px 12px;
+      padding: 5px;
+      font-size: 9.5px;
     }
 
     .footer {
       display: flex;
       justify-content: space-between;
-      margin-top: 7px;
-      padding-top: 5px;
+      margin-top: 8px;
+      padding-top: 6px;
       border-top: 1px solid #dce3e9;
-      font-size: 8px;
+      font-size: 9px;
       color: #526477;
     }
 
@@ -741,7 +824,7 @@ function printApplication(record) {
       html, body {
         width: 210mm;
         height: 297mm;
-        overflow: hidden;
+        overflow: hidden !important;
         background: white;
       }
 
@@ -752,10 +835,10 @@ function printApplication(record) {
       .sheet {
         width: 209mm;
         height: 296mm;
-        margin: 0;
-        padding: 8mm 9mm;
+        margin: 0 !important;
+        padding: 7mm 9mm;
         box-shadow: none;
-        overflow: hidden;
+        overflow: hidden !important;
         break-after: avoid;
         page-break-after: avoid;
       }
@@ -775,8 +858,8 @@ function printApplication(record) {
       <title>Aplikimi ${esc(number)} - Besa Security</title>
       <style>${css}</style>
     </head>
-    <body>
 
+    <body>
       <div class="toolbar">
         <button onclick="prepareAndPrint()">
           Printo / Ruaj PDF
@@ -791,10 +874,9 @@ function printApplication(record) {
 
           <header class="heading">
             <div class="brand">
-              <img
-                class="logo"
-                src="${esc(logo)}"
-                alt="Besa Security">
+              <img class="logo"
+                   src="${esc(logo)}"
+                   alt="Besa Security">
 
               <div>
                 <div class="company">BESA SECURITY</div>
@@ -805,22 +887,37 @@ function printApplication(record) {
               </div>
             </div>
 
-            <div class="iso">
-              <b>ISO9001:2015 &amp; ISO14001:2015</b>
-              <div>v.1.1</div>
+            <div class="iso-block">
+              <strong>
+                ISO9001:2015 &amp; ISO14001:2015
+              </strong>
+              <div class="iso-version">v.1.1</div>
+
+              <div class="employment-fields">
+                <div class="employment-row">
+                  <span class="employment-label">
+                    Data e fillimit te punes
+                  </span>
+                  <div class="employment-line"></div>
+                </div>
+
+                <div class="employment-row">
+                  <span class="employment-label">
+                    Vendi i punes
+                  </span>
+                  <div class="employment-line"></div>
+                </div>
+              </div>
             </div>
           </header>
 
           <div class="meta">
-
             <div class="meta-left">
               <div>
-                <b>Nr. aplikimit:</b>
-                ${esc(number)}
+                <b>Nr. aplikimit:</b> ${esc(number)}
               </div>
               <div>
-                <b>Data:</b>
-                ${esc(date)}
+                <b>Data:</b> ${esc(date)}
               </div>
               <div>
                 <b>Statusi:</b>
@@ -836,7 +933,6 @@ function printApplication(record) {
                 ${esc(d.pozita || '—')}
               </div>
             </div>
-
           </div>
 
           <h2 class="section-title">
@@ -844,13 +940,6 @@ function printApplication(record) {
           </h2>
 
           ${rows}
-
-          ${extra ? `
-            <h2 class="section-title">
-              TE DHENA SHTESE
-            </h2>
-            ${extra}
-          ` : ''}
 
           <h2 class="section-title">
             DOKUMENTET E BASHKENGJITURA
@@ -890,7 +979,7 @@ function printApplication(record) {
           const availableHeight =
             sheet.clientHeight -
             parseFloat(style.paddingTop) -
-            parseFloat(style.paddingBottom);
+            parseFloat(style.paddingBottom) - 4;
 
           const naturalWidth = content.scrollWidth;
           const naturalHeight = content.scrollHeight;
@@ -911,6 +1000,7 @@ function printApplication(record) {
 
         window.addEventListener('load', fitToA4);
         window.addEventListener('beforeprint', fitToA4);
+        window.addEventListener('resize', fitToA4);
 
         if (document.fonts) {
           document.fonts.ready.then(fitToA4);
@@ -923,5 +1013,9 @@ function printApplication(record) {
 
   win.document.close();
 }
+
+// ==========================================
+// START
+// ==========================================
 
 refresh();
