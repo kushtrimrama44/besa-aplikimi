@@ -33,9 +33,9 @@
 
     #application .fields .inline {
       display: inline-flex;
-      margin-right: 16px;
       align-items: center;
       gap: 5px;
+      margin-right: 16px;
     }
 
     #application .hidden,
@@ -66,6 +66,7 @@
     <div class="brand">
       <img class="brand-logo" src="besa-logo.png" alt="Besa Security">
     </div>
+
     <div class="headcopy">
       <h1>Aplikim per Pune</h1>
       <p>Plotesoni formularin per te aplikuar ne Besa Security.</p>
@@ -79,14 +80,20 @@
       <form id="loginForm">
         <label>
           Username
-          <input id="username" required autocomplete="username"
-                 placeholder="aplikant1 ose admin">
+          <input
+            id="username"
+            required
+            autocomplete="username"
+            placeholder="aplikant1 ose admin">
         </label>
 
         <label>
           Password
-          <input id="password" type="password" required
-                 autocomplete="current-password">
+          <input
+            id="password"
+            type="password"
+            required
+            autocomplete="current-password">
         </label>
 
         <button type="submit">Kyçu</button>
@@ -105,6 +112,7 @@
 
         <section>
           <h2>01 · Pozita</h2>
+
           <div class="fields">
             <label>
               Pozita per te cilen aplikoni *
@@ -151,25 +159,33 @@
 
             <label>
               Data e lindjes *
-              <input name="data_lindjes" id="data_lindjes"
-                     inputmode="numeric" maxlength="10"
-                     placeholder="DD.MM.VVVV"
-                     pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}"
-                     required>
+              <input
+                name="data_lindjes"
+                id="data_lindjes"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="DD.MM.VVVV"
+                pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}"
+                required>
             </label>
 
             <label>
               Vendi i lindjes *
-              <input type="text" name="vendi_lindjes"
-                     required maxlength="160">
+              <input
+                type="text"
+                name="vendi_lindjes"
+                required
+                maxlength="160">
             </label>
 
             <label>
               Email (opsionale)
-              <input type="email" name="email"
-                     maxlength="254"
-                     autocomplete="email"
-                     placeholder="emri@example.com">
+              <input
+                type="email"
+                name="email"
+                maxlength="254"
+                autocomplete="email"
+                placeholder="emri@example.com">
             </label>
 
             <label>
@@ -185,14 +201,20 @@
 
             <label>
               Nr. i leternjoftimit *
-              <input type="text" name="numri_leternjoftimit"
-                     required maxlength="160">
+              <input
+                type="text"
+                name="numri_leternjoftimit"
+                required
+                maxlength="160">
             </label>
 
             <label>
               Xhirollogaria bankare *
-              <input type="text" name="xhirollogaria"
-                     required maxlength="160">
+              <input
+                type="text"
+                name="xhirollogaria"
+                required
+                maxlength="160">
             </label>
 
             <label>
@@ -213,8 +235,9 @@
               </select>
             </label>
 
-            <label class="conditional hidden"
-                   data-show="emri_bankes:Tjeter">
+            <label
+              class="conditional hidden"
+              data-show="emri_bankes:Tjeter">
               Shkruaj emrin e bankes *
               <input name="emri_bankes_tjeter" maxlength="120">
             </label>
@@ -234,11 +257,33 @@
               <input type="tel" name="telefoni" required maxlength="160">
             </label>
 
+            <!-- PERGATITJA SHKOLLORE -->
             <label>
-              Drejtimi i shkollimit
-              <input type="text" name="drejtimi" maxlength="160">
+              Pergatitja shkollore *
+              <select
+                name="pergatitja_shkollore"
+                id="pergatitja_shkollore"
+                required>
+                <option value="">Zgjidh</option>
+                <option value="Fillore">Fillore</option>
+                <option value="Mesme">Mesme</option>
+                <option value="Universitare">Universitare</option>
+                <option value="Pasuniversitare">Pasuniversitare</option>
+                <option value="Tjeter">Tjeter</option>
+              </select>
             </label>
 
+            <label
+              class="conditional hidden"
+              data-show="pergatitja_shkollore:!Fillore">
+              Drejtimi i shkollimit *
+              <input
+                type="text"
+                name="drejtimi"
+                maxlength="160">
+            </label>
+
+            <!-- TRAJNIMET -->
             <label>
               Trajnimet profesionale *
               <select name="trajnime" id="trajnime" required>
@@ -248,24 +293,60 @@
               </select>
             </label>
 
-            <label>
-              Pershkrimi i trajnimeve
-              <textarea name="pershkrim_trajnimeve" rows="2"></textarea>
+            <label
+              class="conditional hidden"
+              data-show="trajnime:Po">
+              Pershkrimi i trajnimeve *
+              <textarea
+                name="pershkrim_trajnimeve"
+                rows="2"></textarea>
             </label>
 
-            <fieldset>
-              <legend>Kategorite e patentes (nese posedoni)</legend>
+            <!-- PATENTA -->
+            <label>
+              A posedon patent shofer? *
+              <select name="patente" id="patente" required>
+                <option value="">Zgjidh</option>
+                <option value="Po">Po</option>
+                <option value="Jo">Jo</option>
+              </select>
+            </label>
+
+            <fieldset
+              class="conditional hidden"
+              data-show="patente:Po">
+              <legend>Kategorite e patentes *</legend>
+
               <label class="inline">
-                <input type="checkbox" name="kategorite" value="A"> A
+                <input
+                  type="checkbox"
+                  name="kategorite"
+                  value="A">
+                A
               </label>
+
               <label class="inline">
-                <input type="checkbox" name="kategorite" value="B"> B
+                <input
+                  type="checkbox"
+                  name="kategorite"
+                  value="B">
+                B
               </label>
+
               <label class="inline">
-                <input type="checkbox" name="kategorite" value="C"> C
+                <input
+                  type="checkbox"
+                  name="kategorite"
+                  value="C">
+                C
               </label>
+
               <label class="inline">
-                <input type="checkbox" name="kategorite" value="D"> D
+                <input
+                  type="checkbox"
+                  name="kategorite"
+                  value="D">
+                D
               </label>
             </fieldset>
 
@@ -290,8 +371,10 @@
 
             <label>
               Perkatesia etnike *
-              <select name="perkatesia_etnike"
-                      id="perkatesia_etnike" required>
+              <select
+                name="perkatesia_etnike"
+                id="perkatesia_etnike"
+                required>
                 <option value="">Zgjidh</option>
                 <option value="Shqiptar">Shqiptar</option>
                 <option value="Turk">Turk</option>
@@ -303,47 +386,45 @@
               </select>
             </label>
 
-            <label class="conditional hidden"
-                   data-show="perkatesia_etnike:Tjeter">
+            <label
+              class="conditional hidden"
+              data-show="perkatesia_etnike:Tjeter">
               Specifiko perkatesine *
               <input name="perkatesia_tjeter">
             </label>
 
             <label>
-              Pergatitja shkollore *
-              <select name="pergatitja_shkollore"
-                      id="pergatitja_shkollore" required>
-                <option value="">Zgjidh</option>
-                <option value="Fillore">Fillore</option>
-                <option value="Mesme">Mesme</option>
-                <option value="Universitare">Universitare</option>
-                <option value="Pasuniversitare">Pasuniversitare</option>
-                <option value="Tjeter">Tjeter</option>
-              </select>
-            </label>
-
-            <label>
               Kontakti familjar *
-              <input type="text" name="kontakti_familjar"
-                     required maxlength="160">
+              <input
+                type="text"
+                name="kontakti_familjar"
+                required
+                maxlength="160">
             </label>
 
             <label>
               Lidhja familjare *
-              <input type="text" name="lidhja_familjare"
-                     required maxlength="160">
+              <input
+                type="text"
+                name="lidhja_familjare"
+                required
+                maxlength="160">
             </label>
 
             <label>
               Telefoni familjar *
-              <input type="tel" name="telefoni_familjar"
-                     required maxlength="160">
+              <input
+                type="tel"
+                name="telefoni_familjar"
+                required
+                maxlength="160">
             </label>
           </div>
         </section>
 
         <section>
           <h2>03 · Dokumentet</h2>
+
           <p class="hint">
             PDF, JPG ose PNG; maksimumi 5 MB per dokument.
           </p>
@@ -351,46 +432,66 @@
           <div class="fields">
             <label>
               Leternjoftimi - pjesa e perparme *
-              <input type="file" name="leternjoftimi_para_file"
-                     accept=".pdf,.jpg,.jpeg,.png" required>
+              <input
+                type="file"
+                name="leternjoftimi_para_file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                required>
             </label>
 
             <label>
               Leternjoftimi - pjesa e pasme *
-              <input type="file" name="leternjoftimi_prapa_file"
-                     accept=".pdf,.jpg,.jpeg,.png" required>
+              <input
+                type="file"
+                name="leternjoftimi_prapa_file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                required>
             </label>
 
             <label>
               Vertetimi bankar / IBAN (jo kartela me CVV) *
-              <input type="file" name="kartela_bankare_file"
-                     accept=".pdf,.jpg,.jpeg,.png" required>
+              <input
+                type="file"
+                name="kartela_bankare_file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                required>
             </label>
 
             <label>
               Certifikatat e trajnimeve (opsionale)
-              <input type="file" name="certifikata_trajnimi_file"
-                     accept=".pdf,.jpg,.jpeg,.png">
+              <input
+                type="file"
+                name="certifikata_trajnimi_file"
+                accept=".pdf,.jpg,.jpeg,.png">
             </label>
 
             <label>
               Certifikatat shkollore (opsionale)
-              <input type="file" name="certifikata_shkollore_file"
-                     accept=".pdf,.jpg,.jpeg,.png">
+              <input
+                type="file"
+                name="certifikata_shkollore_file"
+                accept=".pdf,.jpg,.jpeg,.png">
             </label>
           </div>
 
           <div class="datebox">
-            Data e aplikimit: <strong id="today"></strong>
+            Data e aplikimit:
+            <strong id="today"></strong>
           </div>
 
           <label class="consent">
-            <input type="checkbox" name="pajtimi" required>
+            <input
+              type="checkbox"
+              name="pajtimi"
+              required>
             Pajtohem me perpunimin e te dhenave per aplikim *
           </label>
 
           <p id="message" role="status"></p>
-          <button type="submit">Dergo aplikimin</button>
+
+          <button type="submit">
+            Dergo aplikimin
+          </button>
         </section>
       </form>
     </div>
@@ -401,6 +502,7 @@
         <button class="logout" type="button">Dil</button>
         <button id="refreshHR" type="button">Rifresko</button>
       </div>
+
       <div id="hrList"></div>
     </div>
 
@@ -409,7 +511,7 @@
     </footer>
   </main>
 
-  <script src="auth.js?v=20261105-1"></script>
-  <script src="app.js?v=20261105-1"></script>
+  <script src="auth.js?v=20261105-2"></script>
+  <script src="app.js?v=20261105-3"></script>
 </body>
 </html>
