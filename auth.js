@@ -2,7 +2,7 @@
 'use strict';
 
 // BESA SECURITY - Aplikim per Pune
-// auth.js v2.0 - raport A4 me shkronja me te medha
+// auth.js v2.1 - A4 dy kolona, shkronja me te medha
 
 const cfg = window.BESA_CONFIG;
 
@@ -607,12 +607,8 @@ function printApplication(record) {
 
   const rows = visibleKeys.map((key, index) => `
     <div class="field">
-      <span class="field-label">
-        ${index + 1}. ${esc(labels[key])}
-      </span>
-      <span class="field-value">
-        ${esc(displayValue(key, d))}
-      </span>
+      <span class="field-label">${index + 1}. ${esc(labels[key])}</span>
+      <span class="field-value">${esc(displayValue(key, d))}</span>
     </div>
   `).join('');
 
@@ -625,249 +621,50 @@ function printApplication(record) {
     `).join('');
 
   const css = `
-    @page {
-      size: A4 portrait;
-      margin: 0;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #18324a;
-      background: #e8edf2;
-    }
-
-    .toolbar {
-      padding: 12px;
-      text-align: center;
-      background: #173650;
-    }
-
-    .toolbar button {
-      padding: 10px 18px;
-      margin: 0 5px;
-      border: 0;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .sheet {
-      width: 209mm;
-      height: 296mm;
-      margin: 12px auto;
-      padding: 5mm 8mm;
-      background: white;
-      overflow: hidden;
-      box-shadow: 0 3px 14px #0002;
-      position: relative;
-    }
-
-    /* Nivele kompaktimi: shkronjat e medha ruhen sa me gjate. */
-    .sheet.compact-1 .field { padding-top: 1.5px; padding-bottom: 1.5px; min-height: 18px; }
-    .sheet.compact-1 .heading { padding-bottom: 2px; }
-    .sheet.compact-1 .section-title { margin-top: 2px; padding-top: 2px; padding-bottom: 2px; }
-    .sheet.compact-2 .field { font-size: 12px; padding-top: 1px; padding-bottom: 1px; min-height: 17px; }
-    .sheet.compact-2 .meta { padding-top: 3px; padding-bottom: 3px; }
-    .sheet.compact-3 .field { font-size: 11.5px; line-height: 1.12; min-height: 16px; }
-    .sheet.compact-3 .documents { font-size: 10px; }
-
-    .content {
-      width: 100%;
-      transform-origin: top left;
-    }
-
-    .heading {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-      padding-bottom: 4px;
-      border-bottom: 2px solid #b52733;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .logo {
-      width: 75px;
-      max-height: 54px;
-      object-fit: contain;
-    }
-
-    .company {
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    h1 {
-      margin: 3px 0;
-      font-size: 16px;
-      line-height: 1.15;
-    }
-
-    .subtitle {
-      font-size: 11.5px;
-      color: #607183;
-    }
-
-    .iso-block {
-      flex: 0 0 170px;
-      text-align: right;
-      font-size: 11.5px;
-      line-height: 1.35;
-    }
-
-    .iso-version {
-      font-size: 9px;
-      margin-top: 2px;
-    }
-
-    .employment-fields {
-      margin-top: 6px;
-      text-align: left;
-      font-size: 11.5px;
-    }
-
-    .employment-row {
-      margin-top: 5px;
-    }
-
-    .employment-label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 3px;
-    }
-
-    .employment-line {
-      height: 8px;
-      border-bottom: 1px solid #6f8193;
-    }
-
-    .meta {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      align-items: center;
-      gap: 8px;
-      margin: 5px 0;
-      padding: 5px 8px;
-      background: #eef2f6;
-      font-size: 11.5px;
-    }
-
-    .meta-left {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .meta-right {
-      min-width: 0;
-      padding: 5px 8px;
-      text-align: center;
-      border-left: 2px solid #b52733;
-    }
-
-    .position-label {
-      font-size: 11.5px;
-      font-weight: bold;
-      color: #526477;
-      letter-spacing: .3px;
-    }
-
-    .position-value {
-      margin-top: 5px;
-      font-size: 19px;
-      font-weight: 800;
-      color: #173650;
-      overflow-wrap: anywhere;
-    }
-
-    .section-title {
-      margin: 4px 0 2px;
-      padding: 3px 6px;
-      font-size: 13px;
-      background: #edf2f6;
-      border-left: 3px solid #b52733;
-    }
-
-    .field {
-      display: grid;
-      grid-template-columns: 43% minmax(0,57%);
-      align-items: start;
-      min-height: 20px;
-      padding: 2.5px 5px;
-      border-bottom: 1px solid #dfe5eb;
-      font-size: 12.5px;
-      line-height: 1.17;
-      break-inside: avoid;
-    }
-
-    .field-label {
-      font-weight: bold;
-      color: #43566a;
-      padding-right: 8px;
-    }
-
-    .field-value {
-      min-width: 0;
-      overflow-wrap: anywhere;
-      white-space: pre-line;
-    }
-
-    .documents {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 3px 9px;
-      padding: 5px;
-      font-size: 10.5px;
-    }
-
-    .footer {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 4px;
-      padding-top: 4px;
-      border-top: 1px solid #dce3e9;
-      font-size: 11.5px;
-      color: #526477;
-    }
-
+    @page { size: A4 portrait; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #18324a; background: #e8edf2; }
+    .toolbar { padding: 12px; text-align: center; background: #173650; }
+    .toolbar button { padding: 10px 18px; margin: 0 5px; border: 0; border-radius: 4px; cursor: pointer; }
+    .sheet { width: 210mm; height: 297mm; margin: 12px auto; padding: 6mm 8mm; background: white; overflow: hidden; box-shadow: 0 3px 14px #0002; position: relative; }
+    .content { width: 100%; transform-origin: top left; }
+    .heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding-bottom: 5px; border-bottom: 2px solid #b52733; }
+    .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .logo { width: 76px; max-height: 55px; object-fit: contain; }
+    .company { font-size: 15px; font-weight: 800; }
+    h1 { margin: 3px 0; font-size: 18px; line-height: 1.1; }
+    .subtitle { font-size: 12px; color: #607183; }
+    .iso-block { flex: 0 0 168px; text-align: right; font-size: 11px; line-height: 1.25; }
+    .iso-version { font-size: 10px; margin-top: 2px; }
+    .employment-fields { margin-top: 5px; text-align: left; font-size: 11px; }
+    .employment-row { margin-top: 4px; }
+    .employment-label { display: block; font-weight: bold; margin-bottom: 2px; }
+    .employment-line { height: 7px; border-bottom: 1px solid #6f8193; }
+    .meta { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; gap: 8px; margin: 5px 0; padding: 6px 8px; background: #eef2f6; font-size: 13px; }
+    .meta-left { display: flex; flex-direction: column; gap: 3px; }
+    .meta-right { min-width: 0; padding: 5px 8px; text-align: center; border-left: 2px solid #b52733; }
+    .position-label { font-size: 12px; font-weight: bold; color: #526477; }
+    .position-value { margin-top: 4px; font-size: 21px; font-weight: 800; color: #173650; overflow-wrap: anywhere; }
+    .section-title { margin: 6px 0 4px; padding: 5px 7px; font-size: 16px; background: #edf2f6; border-left: 3px solid #b52733; }
+    .fields-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 12px; row-gap: 0; align-items: start; }
+    .field { display: flex; flex-direction: column; min-width: 0; min-height: 45px; padding: 4px 5px; border-bottom: 1px solid #dfe5eb; break-inside: avoid; }
+    .field-label { font-size: 12px; font-weight: 700; color: #43566a; line-height: 1.18; }
+    .field-value { font-size: 15px; font-weight: 600; color: #18324a; min-width: 0; overflow-wrap: anywhere; white-space: pre-line; line-height: 1.18; margin-top: 3px; }
+    .documents { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px; font-size: 12px; }
+    .footer { display: flex; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid #dce3e9; font-size: 12px; color: #526477; }
+    .sheet.compact-1 .field { min-height: 40px; padding-top: 2px; padding-bottom: 2px; }
+    .sheet.compact-1 .section-title { margin-top: 3px; margin-bottom: 2px; padding-top: 3px; padding-bottom: 3px; }
+    .sheet.compact-2 .field { min-height: 36px; padding-top: 1px; padding-bottom: 1px; }
+    .sheet.compact-2 .field-value { font-size: 14px; margin-top: 1px; }
+    .sheet.compact-2 .field-label { font-size: 11.5px; }
+    .sheet.compact-3 .field { min-height: 32px; }
+    .sheet.compact-3 .field-value { font-size: 13px; line-height: 1.1; }
+    .sheet.compact-3 .field-label { font-size: 11px; line-height: 1.1; }
     @media print {
-      html, body {
-        width: 210mm;
-        height: 297mm;
-        overflow: hidden !important;
-        background: white;
-      }
-
-      .toolbar {
-        display: none !important;
-      }
-
-      .sheet {
-        width: 209mm;
-        height: 296mm;
-        margin: 0 !important;
-        padding: 5mm 8mm;
-        box-shadow: none;
-        overflow: hidden !important;
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-
-      .meta, .section-title {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
+      html, body { width: 210mm; height: 297mm; overflow: hidden !important; background: white; }
+      .toolbar { display: none !important; }
+      .sheet { width: 210mm; height: 297mm; margin: 0 !important; padding: 6mm 8mm; box-shadow: none; overflow: hidden !important; break-after: avoid; page-break-after: avoid; }
+      .meta, .section-title { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     }
   `;
 
@@ -960,7 +757,7 @@ function printApplication(record) {
             TE DHENAT E APLIKANTIT
           </h2>
 
-          ${rows}
+          <div class="fields-grid">${rows}</div>
 
           <h2 class="section-title">
             DOKUMENTET E BASHKENGJITURA
