@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Besa Security | Aplikim per Pune</title>
   <link rel="icon" href="besa-logo.png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.7">
 
   <style>
     #application .fields {
@@ -235,9 +235,7 @@
               </select>
             </label>
 
-            <label
-              class="conditional hidden"
-              data-show="emri_bankes:Tjeter">
+            <label class="conditional hidden" data-show="emri_bankes:Tjeter">
               Shkruaj emrin e bankes *
               <input name="emri_bankes_tjeter" maxlength="120">
             </label>
@@ -257,13 +255,9 @@
               <input type="tel" name="telefoni" required maxlength="160">
             </label>
 
-            <!-- PERGATITJA SHKOLLORE -->
             <label>
               Pergatitja shkollore *
-              <select
-                name="pergatitja_shkollore"
-                id="pergatitja_shkollore"
-                required>
+              <select name="pergatitja_shkollore" id="pergatitja_shkollore" required>
                 <option value="">Zgjidh</option>
                 <option value="Fillore">Fillore</option>
                 <option value="Mesme">Mesme</option>
@@ -273,17 +267,11 @@
               </select>
             </label>
 
-            <label
-              class="conditional hidden"
-              data-show="pergatitja_shkollore:!Fillore">
+            <label class="conditional hidden" data-show="pergatitja_shkollore:!Fillore">
               Drejtimi i shkollimit *
-              <input
-                type="text"
-                name="drejtimi"
-                maxlength="160">
+              <input type="text" name="drejtimi" maxlength="160">
             </label>
 
-            <!-- TRAJNIMET -->
             <label>
               Trajnimet profesionale *
               <select name="trajnime" id="trajnime" required>
@@ -293,16 +281,11 @@
               </select>
             </label>
 
-            <label
-              class="conditional hidden"
-              data-show="trajnime:Po">
+            <label class="conditional hidden" data-show="trajnime:Po">
               Pershkrimi i trajnimeve *
-              <textarea
-                name="pershkrim_trajnimeve"
-                rows="2"></textarea>
+              <textarea name="pershkrim_trajnimeve" rows="2"></textarea>
             </label>
 
-            <!-- PATENTA -->
             <label>
               A posedon patent shofer? *
               <select name="patente" id="patente" required>
@@ -312,40 +295,26 @@
               </select>
             </label>
 
-            <fieldset
-              class="conditional hidden"
-              data-show="patente:Po">
+            <fieldset class="conditional hidden" data-show="patente:Po">
               <legend>Kategorite e patentes *</legend>
 
               <label class="inline">
-                <input
-                  type="checkbox"
-                  name="kategorite"
-                  value="A">
+                <input type="checkbox" name="kategorite" value="A">
                 A
               </label>
 
               <label class="inline">
-                <input
-                  type="checkbox"
-                  name="kategorite"
-                  value="B">
+                <input type="checkbox" name="kategorite" value="B">
                 B
               </label>
 
               <label class="inline">
-                <input
-                  type="checkbox"
-                  name="kategorite"
-                  value="C">
+                <input type="checkbox" name="kategorite" value="C">
                 C
               </label>
 
               <label class="inline">
-                <input
-                  type="checkbox"
-                  name="kategorite"
-                  value="D">
+                <input type="checkbox" name="kategorite" value="D">
                 D
               </label>
             </fieldset>
@@ -357,6 +326,26 @@
                 <option value="Po">Po</option>
                 <option value="Jo">Jo</option>
               </select>
+            </label>
+
+            <label class="conditional hidden" data-show="denuar:Po">
+              Statusi i denimit *
+              <select name="denuar_status" id="denuar_status">
+                <option value="">Zgjidh statusin</option>
+                <option value="E paster">E paster</option>
+                <option value="I denuar">I denuar</option>
+                <option value="Nen hetime">Nen hetime</option>
+                <option value="Denim te perfunduar">Denim te perfunduar</option>
+              </select>
+            </label>
+
+            <label class="conditional hidden" data-show="denuar_status:!E paster">
+              Arsyeja / sqarimi *
+              <textarea
+                name="denuar_arsye"
+                id="denuar_arsye"
+                rows="2"
+                maxlength="800"></textarea>
             </label>
 
             <label>
@@ -371,10 +360,7 @@
 
             <label>
               Perkatesia etnike *
-              <select
-                name="perkatesia_etnike"
-                id="perkatesia_etnike"
-                required>
+              <select name="perkatesia_etnike" id="perkatesia_etnike" required>
                 <option value="">Zgjidh</option>
                 <option value="Shqiptar">Shqiptar</option>
                 <option value="Turk">Turk</option>
@@ -386,38 +372,24 @@
               </select>
             </label>
 
-            <label
-              class="conditional hidden"
-              data-show="perkatesia_etnike:Tjeter">
+            <label class="conditional hidden" data-show="perkatesia_etnike:Tjeter">
               Specifiko perkatesine *
               <input name="perkatesia_tjeter">
             </label>
 
             <label>
               Kontakti familjar *
-              <input
-                type="text"
-                name="kontakti_familjar"
-                required
-                maxlength="160">
+              <input type="text" name="kontakti_familjar" required maxlength="160">
             </label>
 
             <label>
               Lidhja familjare *
-              <input
-                type="text"
-                name="lidhja_familjare"
-                required
-                maxlength="160">
+              <input type="text" name="lidhja_familjare" required maxlength="160">
             </label>
 
             <label>
               Telefoni familjar *
-              <input
-                type="tel"
-                name="telefoni_familjar"
-                required
-                maxlength="160">
+              <input type="tel" name="telefoni_familjar" required maxlength="160">
             </label>
           </div>
         </section>
@@ -480,10 +452,7 @@
           </div>
 
           <label class="consent">
-            <input
-              type="checkbox"
-              name="pajtimi"
-              required>
+            <input type="checkbox" name="pajtimi" required>
             Pajtohem me perpunimin e te dhenave per aplikim *
           </label>
 
@@ -511,7 +480,7 @@
     </footer>
   </main>
 
-  <script src="auth.js?v=20261105-2"></script>
-  <script src="app.js?v=20261105-3"></script>
+  <script src="auth.js?v=2.7"></script>
+  <script src="app.js?v=2.7"></script>
 </body>
 </html>
