@@ -1,9 +1,8 @@
 
 'use strict';
 
-// BESA SECURITY
-// app.js v1.3
-// Menaxhimi i fushave dinamike dhe dergimi i aplikimit
+// BESA SECURITY - app.js v2.7
+// Fushat dinamike, validimi dhe dergimi i aplikimit.
 
 (function () {
   const form = document.querySelector('#application');
@@ -12,20 +11,11 @@
   const message = document.querySelector('#message');
   const today = document.querySelector('#today');
   const submitButton = form.querySelector('[type="submit"]');
+  const dateInput = form.querySelector('[name="data_lindjes"]');
+  const patentSelect = form.querySelector('[name="patente"]');
+  const categories = form.querySelectorAll('[name="kategorite"]');
 
-  const dateInput = form.querySelector(
-    '[name="data_lindjes"]'
-  );
-
-  const patentSelect = form.querySelector(
-    '[name="patente"]'
-  );
-
-  const categories = form.querySelectorAll(
-    '[name="kategorite"]'
-  );
-
-  function showMessage(text, isError) {
+  function showMessage(text, isError = false) {
     if (!message) return;
 
     message.textContent = text;
@@ -46,88 +36,82 @@
     today.textContent = currentDate();
   }
 
-  // ------------------------------------------
+  // ==========================================
   // FUSHAT DINAMIKE
-  // ------------------------------------------
+  // ==========================================
 
   function conditionMatches(rule) {
-    if (!rule) return false;
+    if (!rule || !rule.includes(':')) return false;
 
-    const separator = rule.indexOf(':');
+    const index = rule.indexOf(':');
+    const name = rule.slice(0, index).trim();
+    const expected = rule.slice(index + 1).trim();
 
-    if (separator === -1) return false;
+    const field = form.elements.namedItem(name);
 
-    const fieldName = rule.slice(0, separator).trim();
-    const expected = rule.slice(separator + 1).trim();
-
-    const field = form.elements.namedItem(fieldName);
-
-    if (!field) return false;
+    if (!field || field.disabled) return false;
 
     const value = String(field.value || '').trim();
 
     if (expected.startsWith('!')) {
-      const excluded = expected.slice(1);
-
-      // Fusha shfaqet vetem pasi te jete bere
-      // nje zgjedhje e vlefshme.
-      return value !== '' && value !== excluded;
+      return value !== '' &&
+        value !== expected.slice(1);
     }
 
     return value === expected;
   }
 
   function updateConditionalFields() {
-    const containers = form.querySelectorAll(
-      '[data-show]'
-    );
+    // Perseritja lejon kushtet e varura:
+    // denuar -> denuar_status -> denuar_arsye.
 
-    containers.forEach(container => {
-      const rule = container.dataset.show;
-      const visible = conditionMatches(rule);
+    for (let pass = 0; pass < 2; pass++) {
+      form.querySelectorAll('[data-show]').forEach(container => {
+        const visible = conditionMatches(
+          container.dataset.show
+        );
 
-      container.classList.toggle('hidden', !visible);
-      container.hidden = !visible;
+        container.classList.toggle('hidden', !visible);
+        container.hidden = !visible;
 
-      const controls = container.querySelectorAll(
-        'input, select, textarea'
-      );
+        container.querySelectorAll(
+          'input, select, textarea'
+        ).forEach(control => {
+          if (!visible) {
+            // Pastro vetem kur kalon
+            // ne gjendje te fshehur.
 
-      controls.forEach(control => {
-        if (!visible) {
-          if (control.type === 'checkbox' ||
-              control.type === 'radio') {
-            control.checked = false;
-          } else if (control.type !== 'file') {
-            control.value = '';
+            if (!control.disabled) {
+              if (
+                control.type === 'checkbox' ||
+                control.type === 'radio'
+              ) {
+                control.checked = false;
+              } else {
+                control.value = '';
+              }
+            }
+
+            control.disabled = true;
+            control.required = false;
+
           } else {
-            control.value = '';
-          }
+            control.disabled = false;
 
-          control.disabled = true;
-          control.required = false;
-        } else {
-          control.disabled = false;
-
-          // Fushat tekstuale te shfaqura jane
-          // te detyrueshme, pervec rasteve
-          // kur kane atributin data-optional.
-          if (
-            control.type !== 'checkbox' &&
-            control.type !== 'radio' &&
-            control.type !== 'file' &&
-            !control.hasAttribute('data-optional')
-          ) {
-            control.required = true;
+            control.required =
+              control.type !== 'checkbox' &&
+              control.type !== 'radio' &&
+              control.type !== 'file' &&
+              !control.hasAttribute('data-optional');
           }
-        }
+        });
       });
-    });
+    }
   }
 
-  // ------------------------------------------
+  // ==========================================
   // VALIDIMI I DATES SE LINDJES
-  // ------------------------------------------
+  // ==========================================
 
   function validateBirthDate() {
     if (!dateInput) return true;
@@ -135,8 +119,6 @@
     const value = dateInput.value.trim();
 
     dateInput.setCustomValidity('');
-
-    if (!value) return false;
 
     const match = value.match(
       /^(\d{2})\.(\d{2})\.(\d{4})$/
@@ -170,65 +152,49 @@
       dateInput.setCustomValidity(
         'Data e lindjes nuk eshte e vlefshme.'
       );
-      return false;
     }
 
-    return true;
+    return valid;
   }
 
-  // ------------------------------------------
+  // ==========================================
   // VALIDIMI I PATENTES
-  // ------------------------------------------
+  // ==========================================
 
   function validatePatent() {
-    if (!patentSelect) return true;
-
-    const value = patentSelect.value;
-
-    if (value !== 'Po') return true;
+    if (!patentSelect || patentSelect.value !== 'Po') {
+      return true;
+    }
 
     const selected = Array.from(categories).some(
       checkbox => checkbox.checked
     );
 
-    if (!selected) {
-      showMessage(
-        'Zgjidh te pakten nje kategori te patentes.',
-        true
-      );
+    if (selected) return true;
 
-      const container = form.querySelector(
-        '[data-show="patente:Po"]'
-      );
+    showMessage(
+      'Zgjidh te pakten nje kategori te patentes.',
+      true
+    );
 
-      if (container) {
-        container.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }
+    form.querySelector(
+      '[data-show="patente:Po"]'
+    )?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
+    });
 
-      return false;
-    }
-
-    return true;
+    return false;
   }
 
-  // ------------------------------------------
+  // ==========================================
   // VALIDIMI I DOKUMENTEVE
-  // ------------------------------------------
+  // ==========================================
 
   function validateFiles() {
     const fileInputs = form.querySelectorAll(
       'input[type="file"]'
     );
-
-    const allowedExtensions = [
-      'pdf',
-      'jpg',
-      'jpeg',
-      'png'
-    ];
 
     for (const input of fileInputs) {
       if (input.disabled) continue;
@@ -243,6 +209,7 @@
           );
           return false;
         }
+
         continue;
       }
 
@@ -251,14 +218,25 @@
         .pop()
         .toLowerCase();
 
-      if (
-        !allowedExtensions.includes(extension) ||
-        file.size > 5 * 1024 * 1024
-      ) {
+      const allowedExtensions = [
+        'pdf',
+        'jpg',
+        'jpeg',
+        'png'
+      ];
+
+      const validExtension =
+        allowedExtensions.includes(extension);
+
+      const validSize =
+        file.size <= 5 * 1024 * 1024;
+
+      if (!validExtension || !validSize) {
         showMessage(
           'Dokumentet duhet te jene PDF, JPG ose PNG, maksimumi 5 MB.',
           true
         );
+
         return false;
       }
     }
@@ -266,13 +244,14 @@
     return true;
   }
 
-  // ------------------------------------------
+  // ==========================================
   // EVENTET
-  // ------------------------------------------
+  // ==========================================
 
-  form.addEventListener('change', () => {
-    updateConditionalFields();
-  });
+  form.addEventListener(
+    'change',
+    updateConditionalFields
+  );
 
   if (dateInput) {
     dateInput.addEventListener('input', () => {
@@ -286,14 +265,14 @@
     });
   }
 
-  // ------------------------------------------
+  // ==========================================
   // DERGIMI I APLIKIMIT
-  // ------------------------------------------
+  // ==========================================
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
 
-    showMessage('', false);
+    showMessage('');
 
     updateConditionalFields();
 
@@ -319,6 +298,7 @@
         'Sistemi i dergimit nuk eshte ngarkuar. Rifresko faqen.',
         true
       );
+
       return;
     }
 
@@ -348,7 +328,10 @@
       }
 
     } catch (error) {
-      console.error('Gabim gjate aplikimit:', error);
+      console.error(
+        'Gabim gjate aplikimit:',
+        error
+      );
 
       showMessage(
         'Aplikimi nuk u dergua: ' +
@@ -364,7 +347,10 @@
     }
   });
 
-  // Gjendja fillestare e formularit.
+  // ==========================================
+  // GJENDJA FILLESTARE
+  // ==========================================
+
   updateConditionalFields();
 
 })();
