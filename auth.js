@@ -2,7 +2,7 @@
 'use strict';
 
 // BESA SECURITY - Aplikim per Pune
-// auth.js v1.9
+// auth.js v2.0 - raport A4 me shkronja me te medha
 
 const cfg = window.BESA_CONFIG;
 
@@ -90,6 +90,7 @@ const ordered = [
   'adresa',
   'vendbanimi',
   'telefoni',
+  'pergatitja_shkollore',
   'drejtimi',
   'trajnime',
   'pershkrim_trajnimeve',
@@ -98,7 +99,6 @@ const ordered = [
   'gjatesia',
   'pesha',
   'perkatesia_etnike',
-  'pergatitja_shkollore',
   'kontakti_familjar',
   'lidhja_familjare',
   'telefoni_familjar'
@@ -593,7 +593,19 @@ function printApplication(record) {
     window.location.href
   ).href;
 
-  const rows = ordered.map((key, index) => `
+  // Fushat e fshehura ne formular nuk shfaqen ne raport.
+  const visibleKeys = ordered.filter(key => {
+    if (key === 'pershkrim_trajnimeve') {
+      return String(d.trajnime || '').toLowerCase() === 'po';
+    }
+    if (key === 'drejtimi') {
+      return d.pergatitja_shkollore !== 'Fillore' &&
+        String(d.pergatitja_shkollore || '').trim() !== '';
+    }
+    return true;
+  });
+
+  const rows = visibleKeys.map((key, index) => `
     <div class="field">
       <span class="field-label">
         ${index + 1}. ${esc(labels[key])}
@@ -648,12 +660,21 @@ function printApplication(record) {
       width: 209mm;
       height: 296mm;
       margin: 12px auto;
-      padding: 7mm 9mm;
+      padding: 5mm 8mm;
       background: white;
       overflow: hidden;
       box-shadow: 0 3px 14px #0002;
       position: relative;
     }
+
+    /* Nivele kompaktimi: shkronjat e medha ruhen sa me gjate. */
+    .sheet.compact-1 .field { padding-top: 1.5px; padding-bottom: 1.5px; min-height: 18px; }
+    .sheet.compact-1 .heading { padding-bottom: 2px; }
+    .sheet.compact-1 .section-title { margin-top: 2px; padding-top: 2px; padding-bottom: 2px; }
+    .sheet.compact-2 .field { font-size: 12px; padding-top: 1px; padding-bottom: 1px; min-height: 17px; }
+    .sheet.compact-2 .meta { padding-top: 3px; padding-bottom: 3px; }
+    .sheet.compact-3 .field { font-size: 11.5px; line-height: 1.12; min-height: 16px; }
+    .sheet.compact-3 .documents { font-size: 10px; }
 
     .content {
       width: 100%;
@@ -664,60 +685,60 @@ function printApplication(record) {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 10px;
-      padding-bottom: 7px;
+      gap: 8px;
+      padding-bottom: 4px;
       border-bottom: 2px solid #b52733;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       min-width: 0;
     }
 
     .logo {
-      width: 80px;
-      max-height: 60px;
+      width: 75px;
+      max-height: 54px;
       object-fit: contain;
     }
 
     .company {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 800;
     }
 
     h1 {
       margin: 3px 0;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1.15;
     }
 
     .subtitle {
-      font-size: 9px;
+      font-size: 11.5px;
       color: #607183;
     }
 
     .iso-block {
       flex: 0 0 170px;
       text-align: right;
-      font-size: 9px;
+      font-size: 11.5px;
       line-height: 1.35;
     }
 
     .iso-version {
-      font-size: 8px;
+      font-size: 9px;
       margin-top: 2px;
     }
 
     .employment-fields {
-      margin-top: 12px;
+      margin-top: 6px;
       text-align: left;
-      font-size: 9px;
+      font-size: 11.5px;
     }
 
     .employment-row {
-      margin-top: 9px;
+      margin-top: 5px;
     }
 
     .employment-label {
@@ -727,7 +748,7 @@ function printApplication(record) {
     }
 
     .employment-line {
-      height: 12px;
+      height: 8px;
       border-bottom: 1px solid #6f8193;
     }
 
@@ -735,28 +756,28 @@ function printApplication(record) {
       display: grid;
       grid-template-columns: 1fr 1fr;
       align-items: center;
-      gap: 10px;
-      margin: 8px 0;
-      padding: 9px 10px;
+      gap: 8px;
+      margin: 5px 0;
+      padding: 5px 8px;
       background: #eef2f6;
-      font-size: 10px;
+      font-size: 11.5px;
     }
 
     .meta-left {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
 
     .meta-right {
       min-width: 0;
-      padding: 7px 10px;
+      padding: 5px 8px;
       text-align: center;
       border-left: 2px solid #b52733;
     }
 
     .position-label {
-      font-size: 10px;
+      font-size: 11.5px;
       font-weight: bold;
       color: #526477;
       letter-spacing: .3px;
@@ -764,16 +785,16 @@ function printApplication(record) {
 
     .position-value {
       margin-top: 5px;
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 800;
       color: #173650;
       overflow-wrap: anywhere;
     }
 
     .section-title {
-      margin: 7px 0 3px;
-      padding: 5px 7px;
-      font-size: 11px;
+      margin: 4px 0 2px;
+      padding: 3px 6px;
+      font-size: 13px;
       background: #edf2f6;
       border-left: 3px solid #b52733;
     }
@@ -782,11 +803,11 @@ function printApplication(record) {
       display: grid;
       grid-template-columns: 43% minmax(0,57%);
       align-items: start;
-      min-height: 21px;
-      padding: 4px 5px;
+      min-height: 20px;
+      padding: 2.5px 5px;
       border-bottom: 1px solid #dfe5eb;
-      font-size: 10.5px;
-      line-height: 1.25;
+      font-size: 12.5px;
+      line-height: 1.17;
       break-inside: avoid;
     }
 
@@ -805,18 +826,18 @@ function printApplication(record) {
     .documents {
       display: flex;
       flex-wrap: wrap;
-      gap: 5px 12px;
+      gap: 3px 9px;
       padding: 5px;
-      font-size: 9.5px;
+      font-size: 10.5px;
     }
 
     .footer {
       display: flex;
       justify-content: space-between;
-      margin-top: 8px;
-      padding-top: 6px;
+      margin-top: 4px;
+      padding-top: 4px;
       border-top: 1px solid #dce3e9;
-      font-size: 9px;
+      font-size: 11.5px;
       color: #526477;
     }
 
@@ -836,7 +857,7 @@ function printApplication(record) {
         width: 209mm;
         height: 296mm;
         margin: 0 !important;
-        padding: 7mm 9mm;
+        padding: 5mm 8mm;
         box-shadow: none;
         overflow: hidden !important;
         break-after: avoid;
@@ -963,33 +984,31 @@ function printApplication(record) {
         function fitToA4() {
           const sheet = document.getElementById('sheet');
           const content = document.getElementById('content');
-
           if (!sheet || !content) return;
 
+          sheet.classList.remove('compact-1', 'compact-2', 'compact-3');
           content.style.transform = 'none';
           content.style.width = '100%';
 
           const style = getComputedStyle(sheet);
+          const availableWidth = sheet.clientWidth -
+            parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2;
+          const availableHeight = sheet.clientHeight -
+            parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 2;
 
-          const availableWidth =
-            sheet.clientWidth -
-            parseFloat(style.paddingLeft) -
-            parseFloat(style.paddingRight);
+          // Fillimisht zvogelohen hapesirat, jo shkronjat.
+          for (const level of ['compact-1', 'compact-2', 'compact-3']) {
+            if (content.scrollHeight <= availableHeight &&
+                content.scrollWidth <= availableWidth) break;
+            sheet.classList.add(level);
+          }
 
-          const availableHeight =
-            sheet.clientHeight -
-            parseFloat(style.paddingTop) -
-            parseFloat(style.paddingBottom) - 4;
-
-          const naturalWidth = content.scrollWidth;
-          const naturalHeight = content.scrollHeight;
-
+          // Vetem per te dhena shume te gjata perdoret shkallezimi.
           const scale = Math.min(
             1,
-            availableWidth / Math.max(naturalWidth, 1),
-            availableHeight / Math.max(naturalHeight, 1)
+            availableWidth / Math.max(content.scrollWidth, 1),
+            availableHeight / Math.max(content.scrollHeight, 1)
           );
-
           content.style.transform = 'scale(' + scale + ')';
         }
 
