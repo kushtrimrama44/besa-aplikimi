@@ -3,52 +3,56 @@
 <html lang="sq">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#102d4d">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Besa Security | Aplikim per Pune</title>
-
-  <link rel="icon" type="image/png" href="besa-logo.png">
+  <link rel="icon" href="besa-logo.png">
   <link rel="stylesheet" href="style.css">
 
   <style>
-    /* Formulari me nje kolone */
     #application .fields {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 14px;
+      display: grid !important;
+      grid-template-columns: minmax(0,1fr) !important;
+      gap: 13px !important;
+      max-width: 720px;
+      margin: 0 auto;
     }
 
-    #application .fields > * {
-      grid-column: 1 / -1;
+    #application .fields > label,
+    #application .fields > fieldset {
+      grid-column: 1 / -1 !important;
       min-width: 0;
     }
 
-    #application .fields input:not([type="radio"]):not([type="checkbox"]),
+    #application .fields input:not([type=checkbox]):not([type=radio]),
     #application .fields select,
     #application .fields textarea {
+      width: 100%;
       max-width: 100%;
       box-sizing: border-box;
     }
 
-    #application fieldset {
-      min-width: 0;
+    #application .fields .inline {
+      display: inline-flex;
+      margin-right: 16px;
+      align-items: center;
+      gap: 5px;
     }
 
+    #application .hidden,
     #application .conditional.hidden {
       display: none !important;
     }
 
-    /* Logo 20% me e madhe */
-    header .brand-logo {
-      width: 120%;
-      max-width: 240px;
-      height: auto;
+    .brand-logo {
+      width: 120% !important;
+      max-width: 240px !important;
+      height: auto !important;
       object-fit: contain;
     }
 
-    @media (max-width: 600px) {
-      header .brand-logo {
-        max-width: 190px;
+    @media (max-width:600px) {
+      #application .fields {
+        padding: 0 4px;
       }
     }
   </style>
@@ -58,641 +62,354 @@
 </head>
 
 <body>
-
-<header>
-  <div class="brand">
-    <img
-      class="brand-logo"
-      src="besa-logo.png"
-      alt="Besa Security">
-  </div>
-
-  <div class="headcopy">
-    <h1>Aplikim per Pune</h1>
-    <p>Plotesoni formularin per te aplikuar ne Besa Security.</p>
-  </div>
-</header>
-
-<main>
-
-  <!-- LOGIN -->
-  <section id="loginGate" class="auth-panel">
-    <h2>Kyçja ne sistem</h2>
-
-    <form id="loginForm">
-      <label>
-        Username
-        <input
-          id="username"
-          type="text"
-          autocomplete="username"
-          required
-          pattern="(aplikant1|aplikant2|aplikant3|admin)"
-          placeholder="aplikant1 ose admin">
-      </label>
-
-      <label>
-        Password
-        <input
-          id="password"
-          type="password"
-          autocomplete="current-password"
-          required>
-      </label>
-
-      <button type="submit">Kyçu</button>
-    </form>
-
-    <p id="authStatus" role="status"></p>
-  </section>
-
-  <!-- APLIKANTI -->
-  <div id="appView" hidden>
-
-    <div class="toolbar">
-      <strong>Llogaria: Aplikant</strong>
-      <button class="logout" type="button">Dil</button>
+  <header>
+    <div class="brand">
+      <img class="brand-logo" src="besa-logo.png" alt="Besa Security">
     </div>
-
-    <form id="application" novalidate>
-
-      <section>
-        <h2>01 · Formulari i aplikimit</h2>
-
-        <div class="fields">
-
-          <!-- POZITA -->
-          <label>
-            Pozita per te cilen aplikoni <b>*</b>
-            <select name="pozita" required>
-              <option value="">Zgjidhni poziten</option>
-              <option>Sigurim Themelor</option>
-              <option>Patrulle</option>
-              <option>Operator i Qendres se Kontrollit</option>
-              <option>TPG</option>
-              <option>Agjent i Shitjes</option>
-              <option>Zyrtar Administrativ</option>
-            </select>
-          </label>
-
-          <!-- 1 -->
-          <label>
-            1. Emri <b>*</b>
-            <input
-              name="emri"
-              required
-              maxlength="80"
-              autocomplete="given-name">
-          </label>
-
-          <!-- 2 -->
-          <label>
-            2. Mbiemri <b>*</b>
-            <input
-              name="mbiemri"
-              required
-              maxlength="80"
-              autocomplete="family-name">
-          </label>
-
-          <!-- 3 -->
-          <label>
-            3. Emri i babait <b>*</b>
-            <input
-              name="emri_babait"
-              required
-              maxlength="80">
-          </label>
-
-          <!-- 4 -->
-          <fieldset>
-            <legend>4. Gjinia <b>*</b></legend>
-
-            <label>
-              <input
-                type="radio"
-                name="gjinia"
-                value="Mashkull"
-                required>
-              Mashkull
-            </label>
-
-            <label>
-              <input
-                type="radio"
-                name="gjinia"
-                value="Femer">
-              Femer
-            </label>
-          </fieldset>
-
-          <!-- 5 -->
-          <label>
-            5. Data e lindjes <b>*</b>
-            <input
-              type="text"
-              name="data_lindjes"
-              id="data_lindjes"
-              inputmode="numeric"
-              autocomplete="bday"
-              placeholder="DD.MM.VVVV"
-              maxlength="10"
-              pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}"
-              title="Shkruani daten ne formatin DD.MM.VVVV"
-              required>
-          </label>
-
-          <!-- 6 -->
-          <label>
-            6. Vendi i lindjes <b>*</b>
-            <input
-              name="vendi_lindjes"
-              required
-              maxlength="100">
-          </label>
-
-          <!-- 7 -->
-          <label>
-            7. Nr. i leternjoftimit <b>*</b>
-            <input
-              name="numri_leternjoftimit"
-              required
-              maxlength="30"
-              autocomplete="off">
-          </label>
-
-          <!-- 8 -->
-          <label>
-            8. Xhirollogaria bankare <b>*</b>
-            <input
-              name="xhirollogaria"
-              required
-              maxlength="50"
-              autocomplete="off">
-          </label>
-
-          <!-- 9 -->
-          <label>
-            9. Emri i bankes <b>*</b>
-
-            <select
-              name="emri_bankes"
-              id="emri_bankes"
-              required>
-
-              <option value="">Zgjidhni banken</option>
-              <option value="RBKO">Raiffeisen Bank Kosovo (RBKO)</option>
-              <option value="TEB">TEB</option>
-              <option value="NLB">NLB Banka (NLB)</option>
-              <option value="PCB">ProCredit Bank (PCB)</option>
-              <option value="BKT">Banka Kombetare Tregtare - BKT Kosove</option>
-              <option value="BPB">Banka per Biznes (BPB)</option>
-              <option value="BE">Banka Ekonomike (BE)</option>
-              <option value="ZIRAAT">Ziraat Bank Kosova</option>
-              <option value="CREDINS">Banka Credins Kosove</option>
-              <option value="PRIBANK">PriBank</option>
-              <option value="Tjeter">Tjeter</option>
-
-            </select>
-          </label>
-
-          <label class="conditional hidden">
-            Shkruani emrin e bankes <b>*</b>
-            <input
-              type="text"
-              name="emri_bankes_tjeter"
-              id="emri_bankes_tjeter"
-              maxlength="120"
-              disabled>
-          </label>
-
-          <!-- 10 -->
-          <label>
-            10. Adresa <b>*</b>
-            <input
-              name="adresa"
-              required
-              maxlength="200"
-              autocomplete="street-address">
-          </label>
-
-          <!-- 11 -->
-          <label>
-            11. Vendbanimi <b>*</b>
-            <input
-              name="vendbanimi"
-              required
-              maxlength="120">
-          </label>
-
-          <!-- 12 -->
-          <label>
-            12. Nr. i telefonit <b>*</b>
-            <input
-              type="tel"
-              name="telefoni"
-              required
-              maxlength="25"
-              autocomplete="tel">
-          </label>
-
-          <!-- 13 -->
-          <label
-            class="conditional hidden"
-            data-show="arsimi:!Fillore">
-            13. Drejtimi i shkollimit <b>*</b>
-            <input
-              name="drejtimi"
-              maxlength="160">
-          </label>
-
-          <!-- 14 -->
-          <fieldset>
-            <legend>
-              14. Trajnimet profesionale <b>*</b>
-            </legend>
-
-            <label>
-              <input
-                type="radio"
-                name="trajnime"
-                value="Po"
-                required>
-              Po
-            </label>
-
-            <label>
-              <input
-                type="radio"
-                name="trajnime"
-                value="Jo">
-              Jo
-            </label>
-          </fieldset>
-
-          <!-- 15 -->
-          <label
-            class="conditional hidden"
-            data-radio="trajnime:Po">
-            15. Pershkrimi i trajnimeve <b>*</b>
-            <textarea
-              name="pershkrim_trajnimeve"
-              rows="3"
-              maxlength="2000"></textarea>
-          </label>
-
-          <!-- PATENTA -->
-          <fieldset>
-            <legend>
-              A posedoni patente shoferi? <b>*</b>
-            </legend>
-
-            <label>
-              <input
-                type="radio"
-                name="patente"
-                value="Po"
-                required>
-              Po
-            </label>
-
-            <label>
-              <input
-                type="radio"
-                name="patente"
-                value="Jo">
-              Jo
-            </label>
-          </fieldset>
-
-          <!-- 16 -->
-          <fieldset
-            class="conditional hidden"
-            data-radio="patente:Po">
-
-            <legend>
-              16. Kategorite e patentes <b>*</b>
-            </legend>
-
-            <label>
-              <input
-                type="checkbox"
-                name="kategorite"
-                value="A">
-              A
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                name="kategorite"
-                value="B">
-              B
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                name="kategorite"
-                value="C">
-              C
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                name="kategorite"
-                value="D">
-              D
-            </label>
-          </fieldset>
-
-          <!-- 17 -->
-          <fieldset>
-            <legend>
-              17. I denuar <b>*</b>
-            </legend>
-
-            <label>
-              <input
-                type="radio"
-                name="denuar"
-                value="Po"
-                required>
-              Po
-            </label>
-
-            <label>
-              <input
-                type="radio"
-                name="denuar"
-                value="Jo">
-              Jo
-            </label>
-          </fieldset>
-
-          <label
-            class="conditional hidden"
-            data-radio="denuar:Po">
-            Statusi ligjor <b>*</b>
-
-            <select
-              name="statusi_ligjor"
-              id="statusi">
-
-              <option value="">Zgjidhni</option>
-              <option>E paster</option>
-              <option>I denuar</option>
-              <option>Nen hetime</option>
-              <option>Denim te perfunduar</option>
-            </select>
-          </label>
-
-          <label
-            class="conditional hidden"
-            data-show="statusi:!E paster">
-            Arsyeja / sqarimi <b>*</b>
-
-            <textarea
-              name="arsyeja_statusit"
-              rows="3"
-              maxlength="2000"></textarea>
-          </label>
-
-          <!-- 18 -->
-          <label>
-            18. Gjatesia (cm) <b>*</b>
-            <input
-              type="number"
-              name="gjatesia"
-              min="90"
-              max="250"
-              step="0.1"
-              required>
-          </label>
-
-          <!-- 19 -->
-          <label>
-            19. Pesha (kg) <b>*</b>
-            <input
-              type="number"
-              name="pesha"
-              min="20"
-              max="400"
-              step="0.1"
-              required>
-          </label>
-
-          <!-- 20 -->
-          <label>
-            20. Perkatesia etnike <b>*</b>
-
-            <select
-              name="perkatesia_etnike"
-              id="etnia"
-              required>
-
-              <option value="">Zgjidhni</option>
-              <option>Shqiptar</option>
-              <option>Turk</option>
-              <option>Serb</option>
-              <option>Boshnjak</option>
-              <option>Malazez</option>
-              <option>RAE</option>
-              <option>Tjeter</option>
-            </select>
-          </label>
-
-          <label
-            class="conditional hidden"
-            data-show="etnia:Tjeter">
-            Specifikoni perkatesine <b>*</b>
-
-            <input
-              name="perkatesia_tjeter"
-              maxlength="100">
-          </label>
-
-          <!-- 21 -->
-          <label>
-            21. Pergatitja shkollore <b>*</b>
-
-            <select
-              name="pergatitja_shkollore"
-              id="arsimi"
-              required>
-
-              <option value="">Zgjidhni</option>
-              <option>Fillore</option>
-              <option>Mesme</option>
-              <option>Universitare</option>
-              <option>Pasuniversitare</option>
-              <option>Tjeter</option>
-            </select>
-          </label>
-
-          <!-- 22 -->
-          <label>
-            22. Kontakti familjar <b>*</b>
-            <input
-              name="kontakti_familjar"
-              required
-              maxlength="160"
-              placeholder="Emri dhe mbiemri">
-          </label>
-
-          <!-- 23 -->
-          <label>
-            23. Lidhja familjare <b>*</b>
-            <input
-              name="lidhja_familjare"
-              required
-              maxlength="100"
-              placeholder="Prind, bashkeshort/e, vella, moter">
-          </label>
-
-          <!-- 24 -->
-          <label>
-            24. Telefoni familjar <b>*</b>
-            <input
-              name="telefoni_familjar"
-              type="tel"
-              required
-              maxlength="25">
-          </label>
-
-        </div>
-      </section>
-
-      <!-- DOKUMENTET -->
-      <section>
-        <h2>02 · Dokumentet dhe dergimi</h2>
-
-        <p class="hint">
-          Formate te lejuara: PDF, JPG, PNG.
-          Maksimumi 5 MB per dokument.
-        </p>
-
-        <div class="fields">
-
-          <label>
-            Ngarko leternjoftimin - Pjesa e perparme <b>*</b>
-            <input
-              type="file"
-              name="leternjoftimi_para_file"
-              required
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
-          </label>
-
-          <label>
-            Ngarko leternjoftimin - Pjesa e pasme <b>*</b>
-            <input
-              type="file"
-              name="leternjoftimi_prapa_file"
-              required
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
-          </label>
-
-          <label>
-            Ngarko dokumentin bankar <b>*</b>
-            <input
-              type="file"
-              name="kartela_bankare_file"
-              required
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
-
-            <small>
-              Preferohet vertetim bankar me IBAN.
-              Mos ngarkoni numrin e plote te karteles ose CVV.
-            </small>
-          </label>
-
-          <label>
-            Certifikatat e trajnimeve (opsionale)
-            <input
-              type="file"
-              name="certifikata_trajnimi_file"
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
-          </label>
-
-          <label>
-            Certifikatat shkollore (opsionale)
-            <input
-              type="file"
-              name="certifikata_shkollore_file"
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
-          </label>
-
-        </div>
-
-        <div class="datebox">
-          Data e aplikimit:
-          <strong id="today"></strong>
-
-          <small>
-            (regjistrohet automatikisht gjate dergimit)
-          </small>
-        </div>
-
-        <label class="consent">
-          <input
-            type="checkbox"
-            name="pajtimi"
-            required>
-
-          Pajtohem me perpunimin e te dhenave personale
-          per shqyrtimin e aplikimit. <b>*</b>
+    <div class="headcopy">
+      <h1>Aplikim per Pune</h1>
+      <p>Plotesoni formularin per te aplikuar ne Besa Security.</p>
+    </div>
+  </header>
+
+  <main>
+    <section id="loginGate" class="auth-panel">
+      <h2>Kyçja ne sistem</h2>
+
+      <form id="loginForm">
+        <label>
+          Username
+          <input id="username" required autocomplete="username"
+                 placeholder="aplikant1 ose admin">
         </label>
 
-        <div class="notice">
-          Aplikimi dergohet permes Supabase.
-          Dokumentet ruhen ne bucket privat.
-        </div>
+        <label>
+          Password
+          <input id="password" type="password" required
+                 autocomplete="current-password">
+        </label>
 
-        <p
-          id="message"
-          role="status"
-          aria-live="polite"></p>
+        <button type="submit">Kyçu</button>
+      </form>
 
-        <button type="submit">
-          Dergo Aplikimin →
-        </button>
+      <p id="authStatus" role="status"></p>
+    </section>
 
-      </section>
+    <div id="appView" hidden>
+      <div class="toolbar">
+        <strong>Llogaria: Aplikant</strong>
+        <button class="logout" type="button">Dil</button>
+      </div>
 
-    </form>
-  </div>
+      <form id="application">
 
-  <!-- HR DASHBOARD -->
-  <div id="hrView" hidden>
+        <section>
+          <h2>01 · Pozita</h2>
+          <div class="fields">
+            <label>
+              Pozita per te cilen aplikoni *
+              <select name="pozita" required>
+                <option value="">Zgjidh poziten</option>
+                <option>Sigurim Themelor</option>
+                <option>Patrulle</option>
+                <option>Operator i Qendres se Kontrollit</option>
+                <option>TPG</option>
+                <option>Agjent i Shitjes</option>
+                <option>Zyrtar Administrativ</option>
+              </select>
+            </label>
+          </div>
+        </section>
 
-    <div class="toolbar">
-      <h2>HR Dashboard</h2>
+        <section>
+          <h2>02 · Te dhenat e aplikantit</h2>
 
-      <button
-        class="logout"
-        type="button">
-        Dil
-      </button>
+          <div class="fields">
+            <label>
+              Emer *
+              <input type="text" name="emri" required maxlength="160">
+            </label>
 
-      <button
-        id="refreshHR"
-        type="button">
-        Rifresko
-      </button>
+            <label>
+              Mbiemer *
+              <input type="text" name="mbiemri" required maxlength="160">
+            </label>
+
+            <label>
+              Emri i babait *
+              <input type="text" name="emri_babait" required maxlength="160">
+            </label>
+
+            <label>
+              Gjinia *
+              <select name="gjinia" id="gjinia" required>
+                <option value="">Zgjidh</option>
+                <option value="Mashkull">Mashkull</option>
+                <option value="Femer">Femer</option>
+              </select>
+            </label>
+
+            <label>
+              Data e lindjes *
+              <input name="data_lindjes" id="data_lindjes"
+                     inputmode="numeric" maxlength="10"
+                     placeholder="DD.MM.VVVV"
+                     pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}"
+                     required>
+            </label>
+
+            <label>
+              Vendi i lindjes *
+              <input type="text" name="vendi_lindjes"
+                     required maxlength="160">
+            </label>
+
+            <label>
+              Email (opsionale)
+              <input type="email" name="email"
+                     maxlength="254"
+                     autocomplete="email"
+                     placeholder="emri@example.com">
+            </label>
+
+            <label>
+              Statusi martesor *
+              <select name="statusi_martesor" required>
+                <option value="">Zgjidh statusin martesor</option>
+                <option value="Beqar/e">Beqar/e</option>
+                <option value="I/e martuar">I/e martuar</option>
+                <option value="I/e divorcuar">I/e divorcuar</option>
+                <option value="I/e ve">I/e ve</option>
+              </select>
+            </label>
+
+            <label>
+              Nr. i leternjoftimit *
+              <input type="text" name="numri_leternjoftimit"
+                     required maxlength="160">
+            </label>
+
+            <label>
+              Xhirollogaria bankare *
+              <input type="text" name="xhirollogaria"
+                     required maxlength="160">
+            </label>
+
+            <label>
+              Emri i bankes *
+              <select name="emri_bankes" id="emri_bankes" required>
+                <option value="">Zgjidh banken</option>
+                <option value="RBKO">Raiffeisen Bank Kosovo (RBKO)</option>
+                <option value="TEB">TEB (TEB)</option>
+                <option value="NLB">NLB Banka (NLB)</option>
+                <option value="PCB">ProCredit Bank (PCB)</option>
+                <option value="BKT">BKT Kosove (BKT)</option>
+                <option value="BPB">Banka per Biznes (BPB)</option>
+                <option value="BE">Banka Ekonomike (BE)</option>
+                <option value="ZIRAAT">Ziraat Bank Kosova (ZIRAAT)</option>
+                <option value="CREDINS">Banka Credins Kosove (CREDINS)</option>
+                <option value="PRIBANK">PriBank (PRIBANK)</option>
+                <option value="Tjeter">Tjeter</option>
+              </select>
+            </label>
+
+            <label class="conditional hidden"
+                   data-show="emri_bankes:Tjeter">
+              Shkruaj emrin e bankes *
+              <input name="emri_bankes_tjeter" maxlength="120">
+            </label>
+
+            <label>
+              Adresa *
+              <input type="text" name="adresa" required maxlength="160">
+            </label>
+
+            <label>
+              Vendbanimi *
+              <input type="text" name="vendbanimi" required maxlength="160">
+            </label>
+
+            <label>
+              Nr. i telefonit *
+              <input type="tel" name="telefoni" required maxlength="160">
+            </label>
+
+            <label>
+              Drejtimi i shkollimit
+              <input type="text" name="drejtimi" maxlength="160">
+            </label>
+
+            <label>
+              Trajnimet profesionale *
+              <select name="trajnime" id="trajnime" required>
+                <option value="">Zgjidh</option>
+                <option value="Po">Po</option>
+                <option value="Jo">Jo</option>
+              </select>
+            </label>
+
+            <label>
+              Pershkrimi i trajnimeve
+              <textarea name="pershkrim_trajnimeve" rows="2"></textarea>
+            </label>
+
+            <fieldset>
+              <legend>Kategorite e patentes (nese posedoni)</legend>
+              <label class="inline">
+                <input type="checkbox" name="kategorite" value="A"> A
+              </label>
+              <label class="inline">
+                <input type="checkbox" name="kategorite" value="B"> B
+              </label>
+              <label class="inline">
+                <input type="checkbox" name="kategorite" value="C"> C
+              </label>
+              <label class="inline">
+                <input type="checkbox" name="kategorite" value="D"> D
+              </label>
+            </fieldset>
+
+            <label>
+              I denuar *
+              <select name="denuar" id="denuar" required>
+                <option value="">Zgjidh</option>
+                <option value="Po">Po</option>
+                <option value="Jo">Jo</option>
+              </select>
+            </label>
+
+            <label>
+              Gjatesia (cm) *
+              <input type="number" name="gjatesia" required>
+            </label>
+
+            <label>
+              Pesha (kg) *
+              <input type="number" name="pesha" required>
+            </label>
+
+            <label>
+              Perkatesia etnike *
+              <select name="perkatesia_etnike"
+                      id="perkatesia_etnike" required>
+                <option value="">Zgjidh</option>
+                <option value="Shqiptar">Shqiptar</option>
+                <option value="Turk">Turk</option>
+                <option value="Serb">Serb</option>
+                <option value="Boshnjak">Boshnjak</option>
+                <option value="Malazez">Malazez</option>
+                <option value="RAE">RAE</option>
+                <option value="Tjeter">Tjeter</option>
+              </select>
+            </label>
+
+            <label class="conditional hidden"
+                   data-show="perkatesia_etnike:Tjeter">
+              Specifiko perkatesine *
+              <input name="perkatesia_tjeter">
+            </label>
+
+            <label>
+              Pergatitja shkollore *
+              <select name="pergatitja_shkollore"
+                      id="pergatitja_shkollore" required>
+                <option value="">Zgjidh</option>
+                <option value="Fillore">Fillore</option>
+                <option value="Mesme">Mesme</option>
+                <option value="Universitare">Universitare</option>
+                <option value="Pasuniversitare">Pasuniversitare</option>
+                <option value="Tjeter">Tjeter</option>
+              </select>
+            </label>
+
+            <label>
+              Kontakti familjar *
+              <input type="text" name="kontakti_familjar"
+                     required maxlength="160">
+            </label>
+
+            <label>
+              Lidhja familjare *
+              <input type="text" name="lidhja_familjare"
+                     required maxlength="160">
+            </label>
+
+            <label>
+              Telefoni familjar *
+              <input type="tel" name="telefoni_familjar"
+                     required maxlength="160">
+            </label>
+          </div>
+        </section>
+
+        <section>
+          <h2>03 · Dokumentet</h2>
+          <p class="hint">
+            PDF, JPG ose PNG; maksimumi 5 MB per dokument.
+          </p>
+
+          <div class="fields">
+            <label>
+              Leternjoftimi - pjesa e perparme *
+              <input type="file" name="leternjoftimi_para_file"
+                     accept=".pdf,.jpg,.jpeg,.png" required>
+            </label>
+
+            <label>
+              Leternjoftimi - pjesa e pasme *
+              <input type="file" name="leternjoftimi_prapa_file"
+                     accept=".pdf,.jpg,.jpeg,.png" required>
+            </label>
+
+            <label>
+              Vertetimi bankar / IBAN (jo kartela me CVV) *
+              <input type="file" name="kartela_bankare_file"
+                     accept=".pdf,.jpg,.jpeg,.png" required>
+            </label>
+
+            <label>
+              Certifikatat e trajnimeve (opsionale)
+              <input type="file" name="certifikata_trajnimi_file"
+                     accept=".pdf,.jpg,.jpeg,.png">
+            </label>
+
+            <label>
+              Certifikatat shkollore (opsionale)
+              <input type="file" name="certifikata_shkollore_file"
+                     accept=".pdf,.jpg,.jpeg,.png">
+            </label>
+          </div>
+
+          <div class="datebox">
+            Data e aplikimit: <strong id="today"></strong>
+          </div>
+
+          <label class="consent">
+            <input type="checkbox" name="pajtimi" required>
+            Pajtohem me perpunimin e te dhenave per aplikim *
+          </label>
+
+          <p id="message" role="status"></p>
+          <button type="submit">Dergo aplikimin</button>
+        </section>
+      </form>
     </div>
 
-    <div id="hrList"></div>
-  </div>
+    <div id="hrView" hidden>
+      <div class="toolbar">
+        <h2>HR Dashboard</h2>
+        <button class="logout" type="button">Dil</button>
+        <button id="refreshHR" type="button">Rifresko</button>
+      </div>
+      <div id="hrList"></div>
+    </div>
 
-  <footer>
-    BESA SECURITY · Your safety, our promise.
-  </footer>
+    <footer>
+      BESA SECURITY · Your safety, our promise.
+    </footer>
+  </main>
 
-</main>
-
-<script src="auth.js?v=20261020-3"></script>
-<script src="app.js?v=20261020-3"></script>
-
+  <script src="auth.js?v=20261105-1"></script>
+  <script src="app.js?v=20261105-1"></script>
 </body>
 </html>
