@@ -1,348 +1,370 @@
 
 'use strict';
 
-// ============================================
-// BESA SECURITY - APLIKIM PER PUNE
-// app.js - Versioni i perditesuar
-// ============================================
+// BESA SECURITY
+// app.js v1.3
+// Menaxhimi i fushave dinamike dhe dergimi i aplikimit
 
-const form = document.querySelector('#application');
-const $ = id => document.getElementById(id);
+(function () {
+  const form = document.querySelector('#application');
+  if (!form) return;
 
-// ============================================
-// DATA AKTUALE
-// ============================================
+  const message = document.querySelector('#message');
+  const today = document.querySelector('#today');
+  const submitButton = form.querySelector('[type="submit"]');
 
-const localDate = () =>
-  new Intl.DateTimeFormat('sq-AL', {
-    timeZone: 'Europe/Belgrade',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).format(new Date());
+  const dateInput = form.querySelector(
+    '[name="data_lindjes"]'
+  );
 
-if ($('today')) {
-  $('today').textContent = localDate();
-}
+  const patentSelect = form.querySelector(
+    '[name="patente"]'
+  );
 
-// ============================================
-// SHFAQJA DINAMIKE E FUSHAVE
-// ============================================
+  const categories = form.querySelectorAll(
+    '[name="kategorite"]'
+  );
 
-function toggle(el, visible) {
-  el.classList.toggle('hidden', !visible);
+  function showMessage(text, isError) {
+    if (!message) return;
 
-  el.querySelectorAll('input,select,textarea')
-    .forEach(input => {
-      input.disabled = !visible;
+    message.textContent = text;
+    message.style.color = isError ? '#b91c1c' : '#15803d';
+  }
 
-      if (!visible) {
-        if (
-          input.type === 'checkbox' ||
-          input.type === 'radio'
-        ) {
-          input.checked = false;
+  function currentDate() {
+    const now = new Date();
+
+    return [
+      String(now.getDate()).padStart(2, '0'),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      now.getFullYear()
+    ].join('.');
+  }
+
+  if (today) {
+    today.textContent = currentDate();
+  }
+
+  // ------------------------------------------
+  // FUSHAT DINAMIKE
+  // ------------------------------------------
+
+  function conditionMatches(rule) {
+    if (!rule) return false;
+
+    const separator = rule.indexOf(':');
+
+    if (separator === -1) return false;
+
+    const fieldName = rule.slice(0, separator).trim();
+    const expected = rule.slice(separator + 1).trim();
+
+    const field = form.elements.namedItem(fieldName);
+
+    if (!field) return false;
+
+    const value = String(field.value || '').trim();
+
+    if (expected.startsWith('!')) {
+      const excluded = expected.slice(1);
+
+      // Fusha shfaqet vetem pasi te jete bere
+      // nje zgjedhje e vlefshme.
+      return value !== '' && value !== excluded;
+    }
+
+    return value === expected;
+  }
+
+  function updateConditionalFields() {
+    const containers = form.querySelectorAll(
+      '[data-show]'
+    );
+
+    containers.forEach(container => {
+      const rule = container.dataset.show;
+      const visible = conditionMatches(rule);
+
+      container.classList.toggle('hidden', !visible);
+      container.hidden = !visible;
+
+      const controls = container.querySelectorAll(
+        'input, select, textarea'
+      );
+
+      controls.forEach(control => {
+        if (!visible) {
+          if (control.type === 'checkbox' ||
+              control.type === 'radio') {
+            control.checked = false;
+          } else if (control.type !== 'file') {
+            control.value = '';
+          } else {
+            control.value = '';
+          }
+
+          control.disabled = true;
+          control.required = false;
         } else {
-          input.value = '';
+          control.disabled = false;
+
+          // Fushat tekstuale te shfaqura jane
+          // te detyrueshme, pervec rasteve
+          // kur kane atributin data-optional.
+          if (
+            control.type !== 'checkbox' &&
+            control.type !== 'radio' &&
+            control.type !== 'file' &&
+            !control.hasAttribute('data-optional')
+          ) {
+            control.required = true;
+          }
         }
+      });
+    });
+  }
+
+  // ------------------------------------------
+  // VALIDIMI I DATES SE LINDJES
+  // ------------------------------------------
+
+  function validateBirthDate() {
+    if (!dateInput) return true;
+
+    const value = dateInput.value.trim();
+
+    dateInput.setCustomValidity('');
+
+    if (!value) return false;
+
+    const match = value.match(
+      /^(\d{2})\.(\d{2})\.(\d{4})$/
+    );
+
+    if (!match) {
+      dateInput.setCustomValidity(
+        'Shkruaj daten ne formatin DD.MM.VVVV.'
+      );
+      return false;
+    }
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+
+    const parsed = new Date(
+      year,
+      month - 1,
+      day
+    );
+
+    const valid =
+      parsed.getFullYear() === year &&
+      parsed.getMonth() === month - 1 &&
+      parsed.getDate() === day &&
+      parsed <= new Date() &&
+      year >= 1900;
+
+    if (!valid) {
+      dateInput.setCustomValidity(
+        'Data e lindjes nuk eshte e vlefshme.'
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // ------------------------------------------
+  // VALIDIMI I PATENTES
+  // ------------------------------------------
+
+  function validatePatent() {
+    if (!patentSelect) return true;
+
+    const value = patentSelect.value;
+
+    if (value !== 'Po') return true;
+
+    const selected = Array.from(categories).some(
+      checkbox => checkbox.checked
+    );
+
+    if (!selected) {
+      showMessage(
+        'Zgjidh te pakten nje kategori te patentes.',
+        true
+      );
+
+      const container = form.querySelector(
+        '[data-show="patente:Po"]'
+      );
+
+      if (container) {
+        container.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
       }
+
+      return false;
+    }
+
+    return true;
+  }
+
+  // ------------------------------------------
+  // VALIDIMI I DOKUMENTEVE
+  // ------------------------------------------
+
+  function validateFiles() {
+    const fileInputs = form.querySelectorAll(
+      'input[type="file"]'
+    );
+
+    const allowedExtensions = [
+      'pdf',
+      'jpg',
+      'jpeg',
+      'png'
+    ];
+
+    for (const input of fileInputs) {
+      if (input.disabled) continue;
+
+      const file = input.files?.[0];
+
+      if (!file) {
+        if (input.required) {
+          showMessage(
+            'Ngarko dokumentet e detyrueshme.',
+            true
+          );
+          return false;
+        }
+        continue;
+      }
+
+      const extension = file.name
+        .split('.')
+        .pop()
+        .toLowerCase();
 
       if (
-        input.type !== 'checkbox' &&
-        input.type !== 'radio'
+        !allowedExtensions.includes(extension) ||
+        file.size > 5 * 1024 * 1024
       ) {
-        input.required =
-          visible && el.querySelector('b') !== null;
+        showMessage(
+          'Dokumentet duhet te jene PDF, JPG ose PNG, maksimumi 5 MB.',
+          true
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // ------------------------------------------
+  // EVENTET
+  // ------------------------------------------
+
+  form.addEventListener('change', () => {
+    updateConditionalFields();
+  });
+
+  if (dateInput) {
+    dateInput.addEventListener('input', () => {
+      dateInput.setCustomValidity('');
+    });
+
+    dateInput.addEventListener('blur', () => {
+      if (dateInput.value.trim()) {
+        validateBirthDate();
       }
     });
-}
-
-function update() {
-
-  // Fushat qe perdorin data-show
-  document.querySelectorAll('[data-show]')
-    .forEach(el => {
-      const [id, want] = el.dataset.show.split(':');
-      const source = $(id);
-
-      if (!source) return;
-
-      const val = source.value;
-
-      const parentCondition =
-        id === 'statusi' &&
-        form.elements.denuar?.value !== 'Po';
-
-      const visible =
-        !parentCondition &&
-        !!val &&
-        (
-          want.startsWith('!')
-            ? val !== want.slice(1)
-            : val === want
-        );
-
-      toggle(el, visible);
-    });
-
-  // Fushat qe perdorin data-radio
-  document.querySelectorAll('[data-radio]')
-    .forEach(el => {
-      const [name, want] = el.dataset.radio.split(':');
-      const field = form.elements[name];
-
-      if (!field) return;
-
-      toggle(el, field.value === want);
-    });
-
-  // ============================================
-  // EMRI I BANKES - OPSIONI TJETER
-  // ============================================
-
-  const banka = $('emri_bankes');
-  const bankaTjeter = $('emri_bankes_tjeter');
-
-  if (banka && bankaTjeter) {
-    const isOther =
-      banka.value === 'Tjeter' ||
-      banka.value === 'Tjetër';
-
-    const container =
-      bankaTjeter.closest('[data-show]') ||
-      bankaTjeter.closest('.conditional-field') ||
-      bankaTjeter.parentElement;
-
-    if (container) {
-      container.classList.toggle('hidden', !isOther);
-    }
-
-    bankaTjeter.disabled = !isOther;
-    bankaTjeter.required = isOther;
-
-    if (!isOther) {
-      bankaTjeter.value = '';
-    }
   }
-}
 
-if (form) {
-  form.addEventListener('change', update);
-  update();
-}
+  // ------------------------------------------
+  // DERGIMI I APLIKIMIT
+  // ------------------------------------------
 
-// ============================================
-// DATA E LINDJES - DD.MM.VVVV
-// ============================================
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
 
-const birthDate = $('data_lindjes');
+    showMessage('', false);
 
-function validBirthDate(value) {
-  const match =
-    /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value);
+    updateConditionalFields();
 
-  if (!match) return false;
-
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-
-  const date = new Date(
-    Date.UTC(year, month - 1, day)
-  );
-
-  const now = new Date();
-
-  return (
-    year >= 1900 &&
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day &&
-    date.getTime() <= now.getTime()
-  );
-}
-
-if (birthDate) {
-
-  birthDate.addEventListener('input', () => {
-    const digits = birthDate.value
-      .replace(/\D/g, '')
-      .slice(0, 8);
-
-    birthDate.value = [
-      digits.slice(0, 2),
-      digits.slice(2, 4),
-      digits.slice(4, 8)
-    ]
-      .filter(Boolean)
-      .join('.');
-
-    birthDate.setCustomValidity('');
-  });
-
-  birthDate.addEventListener('blur', () => {
-    birthDate.setCustomValidity(
-      !birthDate.value ||
-      validBirthDate(birthDate.value)
-        ? ''
-        : 'Shkruani nje date te vlefshme DD.MM.VVVV.'
-    );
-  });
-}
-
-// ============================================
-// VALIDIMI DHE DERGIMI I FORMULARIT
-// ============================================
-
-if (form) {
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-
-    const message = $('message');
-
-    if (message) {
-      message.textContent = '';
-    }
-
-    update();
-
-    // Kontrollo daten e lindjes
-    if (birthDate) {
-      const valid = validBirthDate(birthDate.value);
-
-      birthDate.setCustomValidity(
-        valid
-          ? ''
-          : 'Shkruani nje date te vlefshme DD.MM.VVVV.'
-      );
+    if (!validateBirthDate()) {
+      dateInput?.reportValidity();
+      return;
     }
 
     if (!form.reportValidity()) {
       return;
     }
 
-    // ========================================
-    // VALIDIMI I BANKES
-    // ========================================
-
-    const banka = $('emri_bankes');
-    const bankaTjeter = $('emri_bankes_tjeter');
-
-    if (banka) {
-      if (!banka.value) {
-        if (message) {
-          message.textContent =
-            'Ju lutem zgjidhni banken.';
-        }
-        banka.focus();
-        return;
-      }
-
-      if (
-        (banka.value === 'Tjeter' ||
-         banka.value === 'Tjetër') &&
-        (!bankaTjeter || !bankaTjeter.value.trim())
-      ) {
-        if (message) {
-          message.textContent =
-            'Shkruani emrin e bankes tjeter.';
-        }
-
-        bankaTjeter?.focus();
-        return;
-      }
-    }
-
-    // ========================================
-    // VALIDIMI I PATENTES
-    // ========================================
-
-    const categories = [
-      ...form.querySelectorAll(
-        'input[name="kategorite"]:checked'
-      )
-    ];
-
-    const patente = form.elements.patente;
-
-    if (
-      patente?.value === 'Po' &&
-      !categories.length
-    ) {
-      if (message) {
-        message.textContent =
-          'Zgjidhni te pakten nje kategori te patentes.';
-      }
+    if (!validatePatent()) {
       return;
     }
 
-    // ========================================
-    // VALIDIMI I DOKUMENTEVE
-    // ========================================
-
-    const allowed = [
-      'application/pdf',
-      'image/jpeg',
-      'image/png'
-    ];
-
-    for (
-      const input of form.querySelectorAll(
-        'input[type="file"]'
-      )
-    ) {
-      for (const file of input.files) {
-        if (
-          !allowed.includes(file.type) ||
-          file.size > 5 * 1024 * 1024
-        ) {
-          if (message) {
-            message.textContent =
-              'Dokumenti ' + file.name +
-              ' duhet te jete PDF/JPG/PNG ' +
-              'dhe jo mbi 5 MB.';
-          }
-          return;
-        }
-      }
+    if (!validateFiles()) {
+      return;
     }
 
-    // ========================================
-    // DERGIMI NE SUPABASE
-    // ========================================
-
-    const button = form.querySelector(
-      'button[type="submit"]'
-    );
-
-    if (button) {
-      button.disabled = true;
+    if (typeof window.besaSubmit !== 'function') {
+      showMessage(
+        'Sistemi i dergimit nuk eshte ngarkuar. Rifresko faqen.',
+        true
+      );
+      return;
     }
 
-    if (message) {
-      message.textContent =
-        'Duke derguar aplikimin...';
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Duke derguar...';
     }
 
     try {
-      const id = await window.besaSubmit(form);
+      const result = await window.besaSubmit(form);
 
-      if (message) {
-        message.textContent =
-          'Aplikimi u dergua me sukses!';
+      const number = result?.number == null
+        ? ''
+        : String(result.number).padStart(4, '0');
+
+      showMessage(
+        number
+          ? 'Aplikimi u dergua me sukses! Nr. i aplikimit: ' + number
+          : 'Aplikimi u dergua me sukses!',
+        false
+      );
+
+      updateConditionalFields();
+
+      if (today) {
+        today.textContent = currentDate();
       }
 
-    } catch (err) {
-      if (message) {
-        message.textContent =
-          'Aplikimi nuk u dergua: ' +
-          err.message;
-      }
+    } catch (error) {
+      console.error('Gabim gjate aplikimit:', error);
+
+      showMessage(
+        'Aplikimi nuk u dergua: ' +
+        (error?.message || 'Gabim i panjohur.'),
+        true
+      );
+
     } finally {
-      if (button) {
-        button.disabled = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Dergo aplikimin';
       }
     }
   });
-}
+
+  // Gjendja fillestare e formularit.
+  updateConditionalFields();
+
+})();
