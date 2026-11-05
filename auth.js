@@ -2,7 +2,7 @@
 'use strict';
 
 // BESA SECURITY - Aplikim per Pune
-// auth.js v2.1 - A4 dy kolona, shkronja me te medha
+// auth.js v2.2 - A4 nje rresht per fushe, grupime te kerkuara
 
 const cfg = window.BESA_CONFIG;
 
@@ -605,12 +605,42 @@ function printApplication(record) {
     return true;
   });
 
-  const rows = visibleKeys.map((key, index) => `
-    <div class="field">
-      <span class="field-label">${index + 1}. ${esc(labels[key])}</span>
-      <span class="field-value">${esc(displayValue(key, d))}</span>
-    </div>
-  `).join('');
+  // Nje rresht per secilen fushe; vetem grupet e kerkuara bashke.
+  const groups = [
+    ['emri', 'emri_babait', 'mbiemri'],
+    ['gjinia'],
+    ['data_lindjes', 'vendi_lindjes'],
+    ['email'],
+    ['statusi_martesor'],
+    ['numri_leternjoftimit'],
+    ['xhirollogaria'],
+    ['emri_bankes'],
+    ['adresa', 'vendbanimi'],
+    ['telefoni'],
+    ['pergatitja_shkollore', 'drejtimi'],
+    ['trajnime', 'pershkrim_trajnimeve'],
+    ['patente'],
+    ['denuar'],
+    ['gjatesia'],
+    ['pesha'],
+    ['perkatesia_etnike'],
+    ['kontakti_familjar'],
+    ['lidhja_familjare'],
+    ['telefoni_familjar']
+  ];
+
+  let fieldNumber = 0;
+  const rows = groups.map(group => {
+    const keys = group.filter(key => visibleKeys.includes(key));
+    if (!keys.length) return '';
+    const cells = keys.map(key => `
+      <div class="field">
+        <span class="field-label">${++fieldNumber}. ${esc(labels[key])}:</span>
+        <span class="field-value">${esc(displayValue(key, d))}</span>
+      </div>
+    `).join('');
+    return `<div class="field-row cols-${keys.length}">${cells}</div>`;
+  }).join('');
 
   const docs = allDocumentFields
     .filter(key => d[key])
@@ -646,20 +676,25 @@ function printApplication(record) {
     .position-label { font-size: 12px; font-weight: bold; color: #526477; }
     .position-value { margin-top: 4px; font-size: 21px; font-weight: 800; color: #173650; overflow-wrap: anywhere; }
     .section-title { margin: 6px 0 4px; padding: 5px 7px; font-size: 16px; background: #edf2f6; border-left: 3px solid #b52733; }
-    .fields-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 12px; row-gap: 0; align-items: start; }
-    .field { display: flex; flex-direction: column; min-width: 0; min-height: 45px; padding: 4px 5px; border-bottom: 1px solid #dfe5eb; break-inside: avoid; }
-    .field-label { font-size: 12px; font-weight: 700; color: #43566a; line-height: 1.18; }
-    .field-value { font-size: 15px; font-weight: 600; color: #18324a; min-width: 0; overflow-wrap: anywhere; white-space: pre-line; line-height: 1.18; margin-top: 3px; }
+    .fields-grid { display: flex; flex-direction: column; gap: 0; }
+    .field-row { display: grid; grid-template-columns: minmax(0,1fr); border-bottom: 1px solid #dfe5eb; min-height: 29px; align-items: center; break-inside: avoid; }
+    .field-row.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .field-row.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .field { display: flex; align-items: baseline; gap: 7px; min-width: 0; padding: 4px 6px; }
+    .field-label { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; color: #43566a; line-height: 1.2; }
+    .field-value { flex: 1 1 auto; font-size: 15px; font-weight: 700; color: #18324a; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.2; }
+    .field-row.cols-3 .field { gap: 4px; padding-left: 3px; padding-right: 3px; }
+    .field-row.cols-3 .field-label { font-size: 11.5px; }
     .documents { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px; font-size: 12px; }
     .footer { display: flex; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid #dce3e9; font-size: 12px; color: #526477; }
-    .sheet.compact-1 .field { min-height: 40px; padding-top: 2px; padding-bottom: 2px; }
+    .sheet.compact-1 .field-row { min-height: 26px; }
+    .sheet.compact-1 .field { padding-top: 2px; padding-bottom: 2px; }
     .sheet.compact-1 .section-title { margin-top: 3px; margin-bottom: 2px; padding-top: 3px; padding-bottom: 3px; }
-    .sheet.compact-2 .field { min-height: 36px; padding-top: 1px; padding-bottom: 1px; }
-    .sheet.compact-2 .field-value { font-size: 14px; margin-top: 1px; }
-    .sheet.compact-2 .field-label { font-size: 11.5px; }
-    .sheet.compact-3 .field { min-height: 32px; }
-    .sheet.compact-3 .field-value { font-size: 13px; line-height: 1.1; }
-    .sheet.compact-3 .field-label { font-size: 11px; line-height: 1.1; }
+    .sheet.compact-2 .field-row { min-height: 24px; }
+    .sheet.compact-2 .field { padding-top: 1px; padding-bottom: 1px; }
+    .sheet.compact-2 .meta { padding-top: 3px; padding-bottom: 3px; }
+    .sheet.compact-3 .field-row { min-height: 22px; }
+    .sheet.compact-3 .heading { padding-bottom: 2px; }
     @media print {
       html, body { width: 210mm; height: 297mm; overflow: hidden !important; background: white; }
       .toolbar { display: none !important; }
@@ -800,13 +835,13 @@ function printApplication(record) {
             sheet.classList.add(level);
           }
 
-          // Vetem per te dhena shume te gjata perdoret shkallezimi.
-          const scale = Math.min(
-            1,
-            availableWidth / Math.max(content.scrollWidth, 1),
-            availableHeight / Math.max(content.scrollHeight, 1)
-          );
-          content.style.transform = 'scale(' + scale + ')';
+          // Madhesia e shkronjave nuk zvogelohet.
+          // Per tekst te pazakonshem te gjate njofto HR para printimit.
+          if (content.scrollHeight > availableHeight ||
+              content.scrollWidth > availableWidth) {
+            document.title = 'KUJDES: Raporti ka tekst te gjate - ' +
+              document.title.replace(/^KUJDES: Raporti ka tekst te gjate - /, '');
+          }
         }
 
         function prepareAndPrint() {
