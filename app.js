@@ -1,8 +1,9 @@
 
 'use strict';
 
-// BESA SECURITY - app.js v2.7
-// Fushat dinamike, validimi dhe dergimi i aplikimit.
+// BESA SECURITY - app.js v2.8
+// Formatimi automatik i dates, fushat dinamike,
+// validimi dhe dergimi i aplikimit.
 
 (function () {
   const form = document.querySelector('#application');
@@ -14,6 +15,17 @@
   const dateInput = form.querySelector('[name="data_lindjes"]');
   const patentSelect = form.querySelector('[name="patente"]');
   const categories = form.querySelectorAll('[name="kategorite"]');
+  const emailInput = form.querySelector('[name="email"]');
+
+  let submitting = false;
+
+  // EMAIL OPSIONAL
+
+  if (emailInput) {
+    emailInput.required = false;
+    emailInput.type = 'email';
+    emailInput.removeAttribute('required');
+  }
 
   function showMessage(text, isError = false) {
     if (!message) return;
@@ -34,6 +46,76 @@
 
   if (today) {
     today.textContent = currentDate();
+  }
+
+  // ==========================================
+  // FORMATIMI AUTOMATIK I DATES SE LINDJES
+  // ==========================================
+
+  function formatBirthDate(value) {
+    const digits = String(value)
+      .replace(/\D/g, '')
+      .slice(0, 8);
+
+    if (digits.length <= 2) {
+      return digits;
+    }
+
+    if (digits.length <= 4) {
+      return digits.slice(0, 2) +
+        '.' +
+        digits.slice(2);
+    }
+
+    return digits.slice(0, 2) +
+      '.' +
+      digits.slice(2, 4) +
+      '.' +
+      digits.slice(4, 8);
+  }
+
+  if (dateInput) {
+    dateInput.type = 'text';
+    dateInput.inputMode = 'numeric';
+    dateInput.maxLength = 10;
+    dateInput.placeholder = 'DD.MM.VVVV';
+    dateInput.autocomplete = 'bday';
+
+    dateInput.addEventListener('input', () => {
+      const original = dateInput.value;
+      const cursor = dateInput.selectionStart ?? original.length;
+
+      const digitsBeforeCursor = original
+        .slice(0, cursor)
+        .replace(/\D/g, '').length;
+
+      const formatted = formatBirthDate(original);
+
+      dateInput.value = formatted;
+      dateInput.setCustomValidity('');
+
+      let newCursor = 0;
+      let digitCount = 0;
+
+      while (
+        newCursor < formatted.length &&
+        digitCount < digitsBeforeCursor
+      ) {
+        if (/\d/.test(formatted[newCursor])) {
+          digitCount++;
+        }
+
+        newCursor++;
+      }
+
+      dateInput.setSelectionRange(newCursor, newCursor);
+    });
+
+    dateInput.addEventListener('blur', () => {
+      if (dateInput.value.trim()) {
+        validateBirthDate();
+      }
+    });
   }
 
   // ==========================================
@@ -62,9 +144,6 @@
   }
 
   function updateConditionalFields() {
-    // Perseritja lejon kushtet e varura:
-    // denuar -> denuar_status -> denuar_arsye.
-
     for (let pass = 0; pass < 2; pass++) {
       form.querySelectorAll('[data-show]').forEach(container => {
         const visible = conditionMatches(
@@ -78,9 +157,6 @@
           'input, select, textarea'
         ).forEach(control => {
           if (!visible) {
-            // Pastro vetem kur kalon
-            // ne gjendje te fshehur.
-
             if (!control.disabled) {
               if (
                 control.type === 'checkbox' ||
@@ -128,6 +204,7 @@
       dateInput.setCustomValidity(
         'Shkruaj daten ne formatin DD.MM.VVVV.'
       );
+
       return false;
     }
 
@@ -196,6 +273,13 @@
       'input[type="file"]'
     );
 
+    const allowedTypes = {
+      pdf: 'application/pdf',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png'
+    };
+
     for (const input of fileInputs) {
       if (input.disabled) continue;
 
@@ -207,6 +291,7 @@
             'Ngarko dokumentet e detyrueshme.',
             true
           );
+
           return false;
         }
 
@@ -218,20 +303,20 @@
         .pop()
         .toLowerCase();
 
-      const allowedExtensions = [
-        'pdf',
-        'jpg',
-        'jpeg',
-        'png'
-      ];
-
       const validExtension =
-        allowedExtensions.includes(extension);
+        Object.prototype.hasOwnProperty.call(
+          allowedTypes,
+          extension
+        );
+
+      const validType =
+        allowedTypes[extension] === file.type;
 
       const validSize =
+        file.size > 0 &&
         file.size <= 5 * 1024 * 1024;
 
-      if (!validExtension || !validSize) {
+      if (!validExtension || !validType || !validSize) {
         showMessage(
           'Dokumentet duhet te jene PDF, JPG ose PNG, maksimumi 5 MB.',
           true
@@ -253,17 +338,19 @@
     updateConditionalFields
   );
 
-  if (dateInput) {
-    dateInput.addEventListener('input', () => {
-      dateInput.setCustomValidity('');
-    });
-
-    dateInput.addEventListener('blur', () => {
-      if (dateInput.value.trim()) {
-        validateBirthDate();
+  form.addEventListener('reset', () => {
+    setTimeout(() => {
+      if (dateInput) {
+        dateInput.setCustomValidity('');
       }
-    });
-  }
+
+      updateConditionalFields();
+
+      if (today) {
+        today.textContent = currentDate();
+      }
+    }, 0);
+  });
 
   // ==========================================
   // DERGIMI I APLIKIMIT
@@ -271,6 +358,8 @@
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
+
+    if (submitting) return;
 
     showMessage('');
 
@@ -301,6 +390,8 @@
 
       return;
     }
+
+    submitting = true;
 
     if (submitButton) {
       submitButton.disabled = true;
@@ -340,6 +431,8 @@
       );
 
     } finally {
+      submitting = false;
+
       if (submitButton) {
         submitButton.disabled = false;
         submitButton.textContent = 'Dergo aplikimin';
